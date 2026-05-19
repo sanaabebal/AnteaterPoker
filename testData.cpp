@@ -110,15 +110,46 @@ PILES setupTestGameDeal(PILE reference){
 
 /* MAIN FUNCTION */
 int main(void){
-    /* Setting login structure */
+    /* Testing:  Login info structure */
     LOGININFO loginInfo;
     // Setting loginInfo for testing purposes
         loginInfo.isHost = 1;
-        loginInfo.playerName = "Peter the Anteater";
-        loginInfo.password = "myPassword";
-        
+        strcpy(loginInfo.playerName, "Peter the Anteater");
+        //loginInfo.playerName = sprintf("Peter the Anteater");
+        loginInfo.playerNum = 0;
+        strcpy(loginInfo.password, "myPassword");
+        loginInfo.playerType = Human;
+        loginInfo.numPlayers = 1;
+    // Testing login structure
+        loginInfo.PrintLoginInfo();
+
+    /*Testing:  Player structre */
+    PLAYER player;
+    // Setting player for testing purposes
+        player.playerType = Computer;
+        player.score = 100;
+        player.bet = 50;
+        player.isInHand = 1;
+        player.isEliminated = 0;
+        player.playerSocket = 1001;
+    // Testing player structure
+        player.PrintPlayer();
+        strcpy(player.name, "Peter the Anteater");
+        player.PrintPlayer();
+    
+    /* Testing:  Game state structure */
+    GAMESTATE gameState;
+    // Setting gameState for testing purposes
+        gameState.numPlayers = 4;
+        gameState.callAmount = 50;
+        gameState.dealerPlayer = 0;
+        gameState.playerTurn = 2;
+        gameState.pot = 100;
+        gameState.round = River;
+    // Testing game state structure
+        gameState.PrintGameState();
 
 
-
-
+    // Wrapup
+    return 0;
 }
