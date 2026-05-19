@@ -1,5 +1,5 @@
 # Makefile
-SHARED = cards.hpp
+SHARED = cards.hpp data.hpp
 OBJ = g++ -c -Wall
 
 clean:
