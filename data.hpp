@@ -41,7 +41,7 @@ typedef std::string String;
 
     struct Player{
         int playerNum; // numbering starts at 0
-        char name[41]{"Unnammed player"}; // holds the player's name
+        char name[40]{"Unnammed player"}; // holds the player's name
         int playerType; // holds if player is Human or Computer (see PlayerType enum)
         int score; // holds a player's score (i.e. the amount of points they currently have); does not include points that have been bet during the hand
         int bet; // holds a player's bet for the current round of betting (i.e. reset to 0 at the end of each round)
@@ -98,11 +98,12 @@ typedef std::string String;
         int numPlayers; // total number of players in the game
         int round; // holds round number (see Round enum)
         int dealerPlayer; // represents which player is the dealer for the hand (note that the server does the dealing, not the player)
-        PILES allCards; // holds all the cards in the hand (including "leftover" cards)
         int pot; // amount of money in the pot
         int callAmount; // the amount of points currently needed to call in a round
-        PLAYERS players; // holds player information
         int playerTurn; // holds which player's turn it is
+        PILES allCards; // holds all the cards in the hand (including "leftover" cards)
+        PLAYERS players; // holds player information
+        
 
         void PrintGameState(void){
             printf("Game state information:  \n");
