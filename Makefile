@@ -2,10 +2,13 @@
 SHARED = cards.hpp data.hpp
 OBJ = g++ -c -Wall
 
+GTK_CFLAGS = $(shell pkg-config --cflags gtk+-2.0)
+GTK_LIBS = $(shell pkg-config --libs gtk+-2.0)
+
 clean:
 	rm -f *.o
 
-test:  testCards testData
+test:  testCards testData testAlpha
 
 # Main executables
 
@@ -22,6 +25,9 @@ testCards:  testCards.o cards.o
 testData:  testData.o cards.o
 	g++ -Wall testData.o cards.o -o testData
 
+testAlpha:  serverGUIW8.o cards.o DataTransfer.o
+	g++ -Wall serverGUIW8.o cards.o DataTransfer.o -o testAlpha $(GTK_LIBS)
+
 
 # Testing object files
 testCards.o:  testCards.cpp $(SHARED)
@@ -29,3 +35,9 @@ testCards.o:  testCards.cpp $(SHARED)
 
 testData.o:  testData.cpp $(SHARED)
 	$(OBJ) testData.cpp -o testData.o
+
+serverGUIW8.o:  serverGUIW8.cpp $(SHARED)
+	g++ -c $(GTK_CFLAGS) serverGUIW8.cpp -o serverGUIW8.o $(pkg-config --cflags --libs gtk+-2.0)
+
+DataTransfer.o:  DataTransfer.cpp DataTransfer.hpp $(SHARED)
+	g++ -c DataTransfer.cpp -o DataTransfer.o
