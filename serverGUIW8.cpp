@@ -56,6 +56,7 @@ void ShutdownClicked(		/* shutdown button was clicked */
 } /* end of ShutdownClicked */
 
 
+// NEW:  CreateWindow (took old code and modified it to display the desired output)
 GtkWidget *CreateWindow(	/* create the server window */
 	int *argc,
 	char **argv[])
@@ -128,6 +129,7 @@ GtkWidget *CreateWindow(	/* create the server window */
     return(Window);
 } /* end of CreateWindow */
 
+// NEW:  UpdatePlayer (completely new code)
 void UpdatePlayer(LOGININFO loginInfo, int playerSocket){
     char text[200];
     int n = loginInfo.playerNum;
@@ -225,16 +227,20 @@ void ProcessLoginRequest(		/* process a LOGININFO request by a client --user wil
                 FatalError("Writing data to socket failed");
             }
 
-            RecvBuf.resize(2000);
-            n = read(DataSocketFD, RecvBuf.data(), 2000);
-            if (n < 0){   
-                FatalError("Reading data from socket failed");
-            } else if(n == 0){// client closed connection
-                return;
-            }else{
-                RecvBuf.resize(n); // don't want to read garbage values
-                loginInfo = parsingLoginArguments(RecvBuf);
-            }
+            return; // client will have to try again to communicate w/ server, but will now have the data needed to adequately do so
+
+            #ifdef IGNORE
+                RecvBuf.resize(2000);
+                n = read(DataSocketFD, RecvBuf.data(), 2000);
+                if (n < 0){   
+                    FatalError("Reading data from socket failed");
+                } else if(n == 0){// client closed connection
+                    return;
+                }else{
+                    RecvBuf.resize(n); // don't want to read garbage values
+                    loginInfo = parsingLoginArguments(RecvBuf);
+                }
+            #endif
         } 
         // user sent an actual value--update the official structure, record the player
             if(loginInfo.isHost && !foundHost){ // player is host--update the login structure, PLAYERS list accordingly
@@ -267,7 +273,9 @@ void ProcessLoginRequest(		/* process a LOGININFO request by a client --user wil
             // Wrapup
             UpdatePlayer(loginInfo, DataSocketFD);
 
-        
+            // Sending updated copy to user
+            SendBuf = createBuffer(officialLoginInfo);
+            n = write(DataSocketFD, SendBuf.data(), SendBuf.size());     
 } /* end of ProcessRequest */
 
 void ServerMainLoop(		/* simple server main loop */
@@ -285,6 +293,14 @@ void ServerMainLoop(		/* simple server main loop */
 
             FD_ZERO(&ActiveFDs);		/* set of active sockets */
             FD_SET(ServSocketFD, &ActiveFDs);	/* server socket is active */
+
+            #ifdef TESTING
+                officialLoginInfo.playerNum = 2;
+                strcpy(officialLoginInfo.playerName, "Peter");
+                UpdatePlayer(officialLoginInfo, 0);
+            #endif
+
+
             while(!Shutdown)
             {
             UpdateWindow();	/* update the GUI window */
@@ -350,7 +366,6 @@ int main(			/* the main function */
 {
     // Doing this to set isHost to be 1 (i.e. first person to log on will be the host)
     officialLoginInfo.isHost = 1;
-
 
     int ServSocketFD;	/* socket file descriptor for service */
     int PortNo;		/* port number */
