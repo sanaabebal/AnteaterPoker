@@ -31,6 +31,9 @@ testAlphaServer:  serverGUIW8.o cards.o DataTransfer.o
 testAlphaClient:  clientTextW8.o cards.o DataTransfer.o
 	g++ -Wall clientTextW8.o cards.o DataTransfer.o -o testAlphaClient
 
+testAlphaClientGUI:  clientGUIW8.o cards.o DataTransfer.o
+	g++ -Wall clientGUIW8.o cards.o DataTransfer.o -o testAlphaClientGUI $(GTK_LIBS)
+
 
 # Testing object files
 testCards.o:  testCards.cpp $(SHARED)
@@ -48,3 +51,6 @@ DataTransfer.o:  DataTransfer.cpp DataTransfer.hpp $(SHARED)
 
 clientTextW8.o:  clientTextW8.cpp $(SHARED)
 	$(OBJ) clientTextW8.cpp -o clientTextW8.o
+
+clientGUIW8.o:  clientGUIW8.cpp $(SHARED)
+	g++ -c $(GTK_CFLAGS) clientGUIW8.cpp -o clientGUIW8.o

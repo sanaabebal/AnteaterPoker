@@ -28,50 +28,6 @@ struct sockaddr_in
 	ServerAddress;	/* server address we connect with */
 
 
-/******** GUI Functions **************************************************/
-GtkWidget *Window;
-char *NameWindow(int *argc, char **argv[]){
-    GtkWidget *VBox;
-    GtkWidget *ShutdownButton;
-
-    GtkWidget *TextPrompt;
-    GtkWidget *Entry;
-    GtkWidget *SubmitButton;
-
-    /* initialize the GTK libraries */
-    gtk_init(argc, argv);
-
-
-    /* create the main, top level window */
-    Window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(Window), "Poker Client View");
-    gtk_window_set_default_size(GTK_WINDOW(Window), 260, 280);
-    gtk_container_set_border_width (GTK_CONTAINER(Window), 10);
-
-    /* overall vertical arrangement in the window */
-    VBox = gtk_vbox_new(FALSE, 10);
-    gtk_container_add(GTK_CONTAINER(Window), VBox);
-
-    /* on top, prompt; then, going down, Text Prompt, Entry, and Submit Button */
-    TextPrompt = gtk_label_new("Player 1:  No player found yet.");
-    Entry = gtk_entry_new();
-    SubmitButton = gtk_button_new_with_label("Confirm");
-
-    gtk_container_add(GTK_CONTAINER(VBox), TextPrompt);
-    gtk_container_add(GTK_CONTAINER(VBox), Entry);
-    gtk_container_add(GTK_CONTAINER(VBox), SubmitButton);
-
-
-
-    /* on the bottom, a button to shutdown the server and quit */
-    ShutdownButton = gtk_button_new_with_label("Shutdown Server and Quit");
-    gtk_container_add(GTK_CONTAINER(VBox), ShutdownButton);
-
-}
-
-
-
-
 /*** global functions ****************************************************/
 
 void FatalError(		/* print error diagnostics and abort */
@@ -85,115 +41,236 @@ void FatalError(		/* print error diagnostics and abort */
     exit(20);
 } /* end of FatalError */
 
-char *Talk2Server(		/* communicate with the server */
-	const char *Message,
-	char *RecvBuf)
-{
+LOGININFO Talk2ServerLogin(LOGININFO loginInfo){	/* communicate with the server */
     int n;
     int SocketFD;
 
+    /* Connecting to Server*/
     SocketFD = socket(AF_INET, SOCK_STREAM, 0);
     if (SocketFD < 0){   
         FatalError("socket creation failed");
     }
-    #ifdef DEBUG
-        printf("%s: Connecting to the server at port %d...\n",
-            Program, ntohs(ServerAddress.sin_port));
-    #endif
-        if (connect(SocketFD, (struct sockaddr*)&ServerAddress,
+    if (connect(SocketFD, (struct sockaddr*)&ServerAddress,
             sizeof(struct sockaddr_in)) < 0){   
                 FatalError("connecting to server failed");
-        }
-    #ifdef DEBUG
-        printf("%s: Sending message '%s'...\n", Program, Message);
-    #endif
-        n = write(SocketFD, Message, strlen(Message));
-        if (n < 0)
-        {   FatalError("writing to socket failed");
-        }
-    #ifdef DEBUG
-        printf("%s: Waiting for response...\n", Program);
-    #endif
-        n = read(SocketFD, RecvBuf, BUFFSIZE-1);
-        if (n < 0) 
-        {   FatalError("reading from socket failed");
-        }
-        RecvBuf[n] = 0;
-    #ifdef DEBUG
-        printf("%s: Received response: %s\n", Program, RecvBuf);
-        printf("%s: Closing the connection...\n", Program);
-    #endif
-        close(SocketFD);
-        return(RecvBuf);
+    }
+
+    /* Creating buffer, sending it to server */
+    BUF RecvBuf(2000); /* message buffer for receiving a message -- think the max for login and game is well below 2000 bytes, but using this just in case */
+    BUF SendBuf; /* message buffer for sending a response */
+
+    SendBuf = createBuffer(loginInfo);
+    n = write(SocketFD, SendBuf.data(), 2000);
+    if (n < 0){   
+        FatalError("writing to socket failed");
+    }
+    
+    /* Getting response from server and closing the socket */
+    n = read(SocketFD, RecvBuf.data(), 2000);
+    if (n < 0) {   
+        FatalError("reading from socket failed");
+    }
+    close(SocketFD);
+
+    // Wrapup:  Getting new structure and returning it
+    loginInfo = parsingLoginArguments(RecvBuf);
+    return loginInfo;
 } /* end of Talk2Server */
 
 
-#ifdef IGNORE
-    void GetTimeFromServer(		/* ask server for current time, display it */
-        GtkWidget *Widget,
-        gpointer Data)
-    {
-            GtkLabel *LabelToUpdate;
-            char RecvBuf[BUFFSIZE];
-            const char *Response;
+/******** GUI Functions **************************************************/
+GtkWidget *Window;
+GtkWidget *MainDisplay;
+GtkWidget *Entry;
+GtkWidget *InputError;
 
-        #ifdef DEBUG
-            printf("%s: GetTimeFromServer callback starting...\n", Program);
-        #endif
-            LabelToUpdate = Data;
-            assert(LabelToUpdate);
-            Response = Talk2Server("TIME", RecvBuf);
-            if (0 == strncmp(Response, "OK TIME: ", 9))
-            {	/* ok, strip off the protocol header and display the time */
-            gtk_label_set_label(LabelToUpdate, Response + 9);
-            }
-            else
-            {	/* unexpected, display entire response */
-            gtk_label_set_label(LabelToUpdate, Response);
-            }
-        #ifdef DEBUG
-            printf("%s: GetTimeFromServer callback done.\n", Program);
-        #endif
-    } /* end of GetTimeFromServer */
-#endif
 
-void ShutdownServer(		/* ask server to shutdown */
-	GtkWidget *Widget,
-	gpointer Data)
-{
-        char RecvBuf[BUFFSIZE];
-        const char *Response;
+void NameWindow(LOGININFO &loginInfo);
+void PasswordWindow(LOGININFO &loginInfo);
+void NumPlayersWindow(LOGININFO &loginInfo);
+void PlayerNumWindow(LOGININFO &loginInfo);
+void PlayerTypeWindow(LOGININFO &loginInfo);
 
-    #ifdef DEBUG
-        printf("%s: ShutdownServer callback starting...\n", Program);
-    #endif
-        Response = Talk2Server("SHUTDOWN", RecvBuf);
-        if (0 == strcmp(Response, "OK SHUTDOWN"))
-        {	/* ok, the server shuts down, so should this client */
-        gtk_main_quit();
+void resetMainDisplay(){
+    GList *children = gtk_container_get_children(GTK_CONTAINER(MainDisplay)); // returns a doubly-linked list of pointers to children GtkWidgets
+    GList *i;
+
+    for(i = children; i != NULL; i = g_list_next(i)){ // looping through the list
+        gtk_container_remove(GTK_CONTAINER(MainDisplay), GTK_WIDGET(i->data));
+    }
+
+    // Wrapup:  Freeing list pointer
+    g_list_free(children);
+}
+
+
+// Getting client name
+void Name_SubmitButton_onClick(GtkWidget *button, gpointer loginData){
+    LOGININFO *loginInfo = (LOGININFO *)loginData; // have to typecast the gpointer
+
+    const char *name;
+    name = gtk_entry_get_text(GTK_ENTRY(Entry)); // returns const char
+
+    // IMPORTANT!
+    strcpy(loginInfo->playerName, name);
+
+    // Moving on to next page
+    resetMainDisplay();
+    PasswordWindow(*loginInfo);
+}
+void NameWindow(LOGININFO &loginInfo){
+    GtkWidget *TextPrompt;
+    GtkWidget *SubmitButton;
+
+
+    /* on top, prompt; then, going down, Text Prompt, Entry, and Submit Button */
+    TextPrompt = gtk_label_new("Welcome to Anteater Poker!\nPlease enter your name (40 characters max, no special characters)");
+    Entry = gtk_entry_new();
+    SubmitButton = gtk_button_new_with_label("Confirm");
+
+    gtk_container_add(GTK_CONTAINER(MainDisplay), TextPrompt);
+    gtk_container_add(GTK_CONTAINER(MainDisplay), Entry);
+    gtk_container_add(GTK_CONTAINER(MainDisplay), SubmitButton);
+
+    g_signal_connect(SubmitButton, "clicked", G_CALLBACK(Name_SubmitButton_onClick), &loginInfo); // for the rest of the main menu code, loginInfo is treated as a pointer
+
+    gtk_widget_show_all(Window);
+}
+
+// Getting password
+void Password_SubmitButton_onClick(GtkWidget *button, gpointer loginData){
+    LOGININFO *loginInfo = (LOGININFO *)loginData;
+
+    const char *password;
+    password = gtk_entry_get_text(GTK_ENTRY(Entry));
+
+    
+    if(loginInfo->isHost){
+        // IMPORTANT!
+        strcpy(loginInfo->password, password);
+    } else{
+        if(!loginInfo->isHost && strcmp(password, loginInfo->password) != 0){
+            gtk_label_set_text(GTK_LABEL(InputError), "Not a recognized room password.  Please try again.");
+            return;
         }
-        else
-        {	/* unexpected response, ignore it as invalid */
-        }
-    #ifdef DEBUG
-        printf("%s: ShutdownServer callback done.\n", Program);
-    #endif
-} /* end of ShutdownServer */
+    }
+    
 
-int main(			/* the main function */
-	int argc,
-	char *argv[])
-{
+    // Moving on to next page if player is host, or non-host player inputs correct password
+    resetMainDisplay();
+    if(loginInfo->isHost){
+        NumPlayersWindow(*loginInfo);
+    } else{ // non-host player doesn't need to access this page
+        PlayerNumWindow(*loginInfo);
+    }
+    
+}
+void PasswordWindow(LOGININFO &loginInfo){
+    GtkWidget *TextPrompt;
+    // GtkWidget *Entry; now a global variable (not got practice -- FIX THIS)
+    GtkWidget *SubmitButton;
+
+    /* on top, prompt; then, going down, Text Prompt, Entry, and Submit Button */
+    if(loginInfo.isHost){
+        TextPrompt = gtk_label_new("Please create a password for the room (40 characters max, no special characters):  ");
+    } else{
+        TextPrompt = gtk_label_new("Please enter the password for the room:  ");
+    }
+    
+    Entry = gtk_entry_new();
+    SubmitButton = gtk_button_new_with_label("Confirm");
+    InputError = gtk_label_new("");
+
+    gtk_container_add(GTK_CONTAINER(MainDisplay), TextPrompt);
+    gtk_container_add(GTK_CONTAINER(MainDisplay), Entry);
+    gtk_container_add(GTK_CONTAINER(MainDisplay), SubmitButton);
+    gtk_container_add(GTK_CONTAINER(MainDisplay), InputError);
+
+    g_signal_connect(SubmitButton, "clicked", G_CALLBACK(Password_SubmitButton_onClick), &loginInfo); // for the rest of the main menu code, loginInfo is treated as a pointer
+
+    gtk_widget_show_all(Window);
+
+}
+
+// Getting the number of players
+void NumPlayers_afterClick(){
+
+}
+void NumPlayers_Two_onClick(GtkWidget *button, gpointer loginData){
+
+}
+void NumPlayers_Three_onClick(GtkWidget *button, gpointer loginData){
+    
+}
+void NumPlayers_Four_onClick(GtkWidget *button, gpointer loginData){
+    
+}
+void NumPlayers_Five_onClick(GtkWidget *button, gpointer loginData){
+    
+}
+void NumPlayers_Six_onClick(GtkWidget *button, gpointer loginData){
+    
+}
+void NumPlayers_Seven_onClick(GtkWidget *button, gpointer loginData){
+    
+}
+void NumPlayers_Eight_onClick(GtkWidget *button, gpointer loginData){
+    
+}
+void NumPlayers_Nine_onClick(GtkWidget *button, gpointer loginData){
+    
+}
+void NumPlayers_Ten_onClick(GtkWidget *button, gpointer loginData){
+    
+}
+void NumPlayersWindow(LOGININFO &loginInfo){
+    return;
+}
+
+void PlayerNumWindow(LOGININFO &loginInfo){
+    return;
+}
+
+// Getting the number of players (if applicable)
+
+void MainMenu(int *argc, char **argv[], LOGININFO &loginInfo){
+    /* initialize the GTK libraries */
+    gtk_init(argc, argv);
+
+    /* create the main, top level window */
+    Window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(Window), "Poker Client View");
+    gtk_window_set_default_size(GTK_WINDOW(Window), 260, 280);
+    gtk_container_set_border_width (GTK_CONTAINER(Window), 10);
+
+    g_signal_connect(Window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+
+    /* overall vertical arrangement in the window */
+    MainDisplay = gtk_vbox_new(FALSE, 10);
+    gtk_container_add(GTK_CONTAINER(Window), MainDisplay);
+
+    // Running the menu
+    NameWindow(loginInfo);
+
+    gtk_widget_show_all(Window);
+    gtk_main();
+    
+    /*
+        PasswordWindow(argc, argv, loginInfo);
+        NumPlayersWindow(argc, argv, loginInfo);
+        PlayerNumWindow(argc, argv, loginInfo);
+        PlayerTypeWindow(argc, argv, loginInfo);
+    */
+}
+
+
+/* MAIN FUNCTION */
+int main(int argc, char *argv[]){
     int PortNo;
     struct hostent *Server;
-    //GtkWidget *Window;
-    GtkWidget *VBox, *RequestButton, *Frame, *Label;
-    GtkWidget *HButtons, *QuitButton, *ShutdownButton;
 
     Program = argv[0];
-#ifdef DEBUG
-    printf("%s: Starting...\n", argv[0]);
-#endif
+
     if (argc < 3)
     {   fprintf(stderr, "Usage: %s hostname port\n", Program);
 	exit(10);
@@ -213,77 +290,31 @@ int main(			/* the main function */
     ServerAddress.sin_port = htons(PortNo);
     ServerAddress.sin_addr = *(struct in_addr*)Server->h_addr_list[0];
 
-    /* build the GUI */
-    /* (adapted from https://en.wikipedia.org/wiki/GTK%2B#Example) */
 
-    #ifdef IGNORE
-        /* initialize the GTK libraries */
-        gtk_init(&argc, &argv);
+    /* LOGIN MENU */
+    LOGININFO loginInfo;
+    loginInfo = Talk2ServerLogin(loginInfo);
+    MainMenu(&argc, &argv, loginInfo);
+    // For testing purposes
+    loginInfo.PrintLoginInfo(); // For testing purposes
+    printf("Players found:  ");
+    for(unsigned int i=0; i<loginInfo.playersFound.size(); i++){
+        printf("%d ", loginInfo.playersFound[i]);
+    }
+    printf("\n");
 
-        /* create the main, top level window */
-        Window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    /* Sending login info to server (and receiving confirmation back) */
+    Talk2ServerLogin(loginInfo);
 
-        /* give it the title of this program */
-        gtk_window_set_title(GTK_WINDOW(Window), Program);
+    loginInfo.PrintLoginInfo();
+    printf("Players found:  ");
+    for(unsigned int i=0; i<loginInfo.playersFound.size(); i++){
+        printf("%d ", loginInfo.playersFound[i]);
+    }
+    printf("\n");
 
-        /* center the window */
-        gtk_window_set_position(GTK_WINDOW(Window), GTK_WIN_POS_CENTER);
+    printf("Data has been sent to the server!\n");
+}
 
-        /* set the window's default size */
-        gtk_window_set_default_size(GTK_WINDOW(Window), 160, 280);
-        gtk_container_set_border_width (GTK_CONTAINER(Window), 10);
-
-        /* map the destroy signal of the window to gtk_main_quit;
-        * when the window is about to be destroyed, we get a notification and
-        * stop the main GTK+ loop by returning 0 */
-        g_signal_connect(Window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
-
-        /* overall vertical arrangement in the window */
-        VBox = gtk_vbox_new(TRUE, 10);
-        gtk_container_add(GTK_CONTAINER(Window), VBox);
-
-        /* on the top, put a button to request the current time from the server */
-        RequestButton = gtk_button_new_with_label("Request Time from Server");
-        gtk_container_add(GTK_CONTAINER(VBox), RequestButton);
-
-        /* in the middle, a frame with the display of the time */
-        Frame = gtk_frame_new("Time received:");
-        gtk_container_add(GTK_CONTAINER(VBox), Frame);
-        Label = gtk_label_new("<no time received yet>");
-        gtk_container_add(GTK_CONTAINER(Frame), Label);
-
-        /* on the bottom, two buttons to quit client and shutdown server */
-        HButtons = gtk_hbutton_box_new();
-        gtk_container_add(GTK_CONTAINER(VBox), HButtons);
-        QuitButton = gtk_button_new_with_label("Quit Client");
-        gtk_container_add(GTK_CONTAINER(HButtons), QuitButton);
-        ShutdownButton = gtk_button_new_with_label("Shutdown Server");
-        gtk_container_add(GTK_CONTAINER(HButtons), ShutdownButton);
-
-        /* make sure that everything becomes visible */
-        gtk_widget_show_all(Window);
-
-        /* connect request button with function asking server for time */
-        g_signal_connect(RequestButton, "clicked",
-                G_CALLBACK(GetTimeFromServer), Label);
-
-        /* connect quit button with function terminating this client */
-        /* (note the 'swapped' call; try without to see the effect) */
-        g_signal_connect_swapped(QuitButton, "clicked",
-                G_CALLBACK(gtk_widget_destroy), Window);
-
-        /* connect shutdown button with function terminating server and client */
-        g_signal_connect(ShutdownButton, "clicked",
-                G_CALLBACK(ShutdownServer), NULL);
-
-        /* start the main loop, handle all registered events */
-        gtk_main();
-    #endif
-
-#ifdef DEBUG
-    printf("%s: Exiting...\n", Program);
-#endif
-    return 0;
-} /* end of main */
 
 /* EOF GTK_ClockClient.c */
