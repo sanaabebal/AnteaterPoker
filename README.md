@@ -32,3 +32,8 @@ Run Notes:
     * NOTE:  In the event that the server is refusing to initialize because it says the port is already in use, please use the following commands:
         _________
         _________
+    * NOTE:  Multiple players can log on, but they must log on one at a time.  If multiple players have the login screen open, the info they will have will be out of date
+                (the program works by sending login data once to the client when they open the program, and then the client sends the updated version back to the server;
+                the server can then send this updated version to the next client who connects, and so on)
+    * NOTE:  The user MUST use -X when logging onto the EECS server for the GTK display to work.
+    
