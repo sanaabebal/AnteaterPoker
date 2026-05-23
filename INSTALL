@@ -1,0 +1,26 @@
+1. System Requirements
+The user must satisfy the following conditions to correctly install the software:
+    * The user must have enough storage space on their computer to download the program
+    * The user must be able to access and use the command line to start the program
+    * The user must have RHEL8 64-bit Linux
+    * The user must have access to standard C, GTK 3.0, C++, and GTK++ library
+    * The user must be able to log onto a UCI EECS server for proper TCP/IP execution
+
+2. Setup and Configuration
+Download the package.  Using the command line, go into the installed folder.
+
+For the binary package, run the executable program on the command line as follows (more details are in parentheses):  
+    % gtar xvzf Poker_V1.0.tar.gz (extract contents into current directory)
+    % evince poker/doc/Poker_UserManual.pdf (for reading documentation, if desired)
+    % poker/bin/poker (run executable file)
+
+For the source package, build the software using the following command line instructions (more details are in parentheses):
+    % gtar xvzf Poker_V1.0_src.tar.gz (extract contents into current directory)
+    % evince poker/doc/Poker_UserManual.pdf (for reading documentation, if desired)
+    % cd poker (go into chess directory)
+    % make (make executable file)
+    % make test (for testing code, if desired)
+    % make clean (to remove executables once finished, if desired)
+
+3. Uninstalling
+Through the command line, the user can uninstall the program by calling make clean (see above), then going one directory above the installed directory and calling rmdir -rf PokerDirectoryName, with PokerDirectoryName being the name of the directory that was downloaded by the user (the user may have decided to rename the directory, so be sure to check its current name).
