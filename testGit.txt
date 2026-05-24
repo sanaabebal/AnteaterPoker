@@ -1,1 +1,0 @@
-Hello!  Making sure that Git initialized properly and that everyone can access it okay.
