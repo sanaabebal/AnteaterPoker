@@ -25,6 +25,7 @@ Alpha Version Notes:
 * Multiple players can log on, but they must log on one at a time.  If multiple players have the login screen open (i.e. have the
                 GUI open but have not reached the wait screen yet), the info they will have will be out of date (the program works by sending login data once to the client when they open the program, and then the client sends the updated version back to the server; the server can then send this updated version to the next client who connects, and so on)
 * The user must use -X when logging onto the EECS server for the GTK display to work.
+* Please see Week8_AlphaVersion directory for git commit history
 
 **********************************************************
 Copyright
