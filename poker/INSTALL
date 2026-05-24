@@ -18,7 +18,8 @@ To compile Anteater Poker, you must have GTK 2.0 development headers installed o
 For the binary package Poker_Alpha.tar.gz, run the executable program on the command line as follows:
 % gtar xvzf Poker_Alpha.tar.gz (extract contents into current directory)
 % evince poker/doc/Poker_UserManual.pdf (for reading documentation, if desired)
-% poker/bin/poker (run executable file)
+% poker/bin/poker_client (run executable file for client)
+% poker/bin/poker_server (run executable file for server)
 
 For Poker_Alpha_src.tar.gz:
 * Extract the Source Package

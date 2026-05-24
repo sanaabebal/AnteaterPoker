@@ -20,6 +20,8 @@
 #include "data.hpp"
 #include "DataTransfer.hpp"
 
+#define DEFAULT_PORT 10080
+
 
 
 /* #define DEBUG */	/* be verbose */
@@ -375,11 +377,14 @@ int main(			/* the main function */
 #ifdef DEBUG
     printf("%s: Starting...\n", Program);
 #endif
-    if (argc < 2)
-    {   fprintf(stderr, "Usage: %s port\n", Program);
-	exit(10);
+    if (argc < 2){   /* NEW:  DEFAULT CASE */
+        //fprintf(stderr, "Usage: %s port\n", Program);
+	    //exit(10);
+        PortNo = DEFAULT_PORT;
+    } else{ /* NEW:  NON-DEFAULT CASE */
+        PortNo = atoi(argv[1]);	/* get the port number */
     }
-    PortNo = atoi(argv[1]);	/* get the port number */
+    
     if (PortNo <= 2000)
     {   fprintf(stderr, "%s: invalid port number %d, should be >2000\n",
 		Program, PortNo);
