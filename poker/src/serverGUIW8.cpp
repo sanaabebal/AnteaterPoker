@@ -139,7 +139,7 @@ void UpdatePlayer(LOGININFO loginInfo, int playerSocket){
         printf("ERROR:  Tried to update player, but player number is out of range.\n");
         return;
     }
-    sprintf(text, "Player %d:  Name=%s, Socket Number=%d", n+1, loginInfo.playerName, playerSocket);
+    sprintf(text, "Player %d:  Name=%s, Socket Number Used=%d", n+1, loginInfo.playerName, playerSocket);
     gtk_label_set_text(GTK_LABEL(player[n]), text);
 
 }

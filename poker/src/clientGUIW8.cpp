@@ -520,27 +520,16 @@ int main(int argc, char *argv[]){
 
     Program = argv[0];
 
-    if (argc < 3){  /* DEFAULT CASE */ 
+    if (argc < 3){  /* DEFAULT CASE:  Prompt user for server */ 
         //fprintf(stderr, "Usage: %s hostname port\n", Program);
 	    //exit(10);
-        Server = gethostbyname(DEFAULT_SERVERNAME);
-        PortNo = DEFAULT_SERVERPORT;
-
-        // Bondi isn't found; flag wasn't specified
         char actualServer[100];
-        if(Server == NULL){
-            printf("Hmmm...bondi is assumed to be host the server code is running on, and no flags were used to specify otherwise...\n");
-            printf("But bondi doesn't seem to be the server host.\n");
-            printf("Please specify where the server actually is:  ");
-            scanf(" %s", actualServer);
+        printf("Before starting the login menu, please specify where the server actually is (e.g. an IP address; \'bondi\'; etc):  ");
+        scanf(" %s", actualServer);
 
-            Server = gethostbyname(actualServer);
-            if(Server == NULL){
-                fprintf(stderr, "%s: no such host named '%s'\n", Program, argv[1]);
-                exit(10);
-            }
-        }
-
+        Server = gethostbyname(actualServer);
+        PortNo = DEFAULT_SERVERPORT;
+        
     } else{ /* NON-DEFAULT CASE */
         Server = gethostbyname(argv[1]);
         PortNo = atoi(argv[2]);

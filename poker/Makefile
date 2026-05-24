@@ -8,7 +8,11 @@ GTK_LIBS = $(shell pkg-config --libs gtk+-2.0)
 all:  ./bin/poker_client ./bin/poker_server
 	@echo ""
 	@echo ""
-	@echo "----------PLEASE RUN bin/poker_client serverName 10080 IF YOU ARE NOT USING THE BONDI SERVER.  You will be prompted to choose via text interface if you do not.----------"
+	@echo "File names:  bin/poker_server bin/poker_client"
+
+# @echo ""
+# @echo ""
+# @echo "----------PLEASE RUN bin/poker_client serverName 10080 IF YOU ARE NOT USING THE BONDI SERVER.  You will be prompted to choose via text interface if you do not.----------"
 
 clean:
 	rm -f *.o
@@ -21,9 +25,11 @@ test:  ./bin/testCards ./bin/testData ./bin/testAlphaServer ./bin/testAlphaClien
 test-gui:  ./bin/testAlphaClientGUI ./bin/testAlphaServer
 	@echo ""
 	@echo ""
-	@echo "---------STARTING SERVER GUI.  Please use another computer/Linux window to run testAlphaClientGUI--note that the default server name is bondi and the port number is 10080.----------"
-	@echo "---------PLEASE RUN bin/testAlphaClientGUI serverName 10080 IF YOU ARE NOT USING THE BONDI SERVER--------"
+	@echo "---------STARTING SERVER GUI.  Please use another computer/Linux window to run bin/testAlphaClientGUI.----------"
 	./bin/testAlphaServer 10080
+
+# @echo "---------PLEASE RUN bin/testAlphaClientGUI serverName 10080 IF YOU ARE NOT USING THE BONDI SERVER--------"
+# ./bin/testAlphaServer 10080
 
 
 # Main executables
