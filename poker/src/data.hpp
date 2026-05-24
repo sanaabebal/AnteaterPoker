@@ -83,7 +83,8 @@ typedef std::string String;
             printf("Player name:  %s\n", playerName);
             printf("Room password:  %s\n", password);
             printf("Player type:  %s\n", (playerType == Human) ? "Human" : (playerType == Computer) ? "Computer" : "unrecognized");
-            printf("Players found:  Sorry, not testing that right now!\n\n");
+            //printf("Players found:  Sorry, not testing that right now!\n\n");
+            printf("\n");
         }
         void hostUpdate(){
             numPlayers++;

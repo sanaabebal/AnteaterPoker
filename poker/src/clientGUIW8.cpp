@@ -17,6 +17,11 @@
 #include "data.hpp"
 #include "DataTransfer.hpp"
 
+
+#define DEFAULT_SERVERPORT 10080
+#define DEFAULT_SERVERNAME "bondi"
+
+
 /* #define DEBUG */	/* be verbose */
 
 
@@ -90,14 +95,16 @@ LOGININFO SendServerLogin(LOGININFO loginInfo){ // full process of sending LOGIN
     /* Sending login info to server (and receiving confirmation back) */
     loginInfo2 = Talk2ServerLogin(loginInfo);
 
-    loginInfo2.PrintLoginInfo();
-    printf("Players found:  ");
-    for(unsigned int i=0; i<loginInfo2.playersFound.size(); i++){
-        printf("%d ", loginInfo2.playersFound[i]);
-    }
-    printf("\n");
+    #ifdef DEBUG
+        loginInfo2.PrintLoginInfo();
+        printf("Players found:  ");
+        for(unsigned int i=0; i<loginInfo2.playersFound.size(); i++){
+            printf("%d ", loginInfo2.playersFound[i]);
+        }
+        printf("\n");
 
-    printf("Data has been sent to the server!\n");
+        printf("Data has been sent to the server!\n");
+    #endif
 
     return loginInfo2;
 
@@ -513,16 +520,38 @@ int main(int argc, char *argv[]){
 
     Program = argv[0];
 
-    if (argc < 3)
-    {   fprintf(stderr, "Usage: %s hostname port\n", Program);
-	exit(10);
+    if (argc < 3){  /* DEFAULT CASE */ 
+        //fprintf(stderr, "Usage: %s hostname port\n", Program);
+	    //exit(10);
+        Server = gethostbyname(DEFAULT_SERVERNAME);
+        PortNo = DEFAULT_SERVERPORT;
+
+        // Bondi isn't found; flag wasn't specified
+        char actualServer[100];
+        if(Server == NULL){
+            printf("Hmmm...bondi is assumed to be host the server code is running on, and no flags were used to specify otherwise...\n");
+            printf("But bondi doesn't seem to be the server host.\n");
+            printf("Please specify where the server actually is:  ");
+            scanf(" %s", actualServer);
+
+            Server = gethostbyname(actualServer);
+            if(Server == NULL){
+                fprintf(stderr, "%s: no such host named '%s'\n", Program, argv[1]);
+                exit(10);
+            }
+        }
+
+    } else{ /* NON-DEFAULT CASE */
+        Server = gethostbyname(argv[1]);
+        PortNo = atoi(argv[2]);
     }
-    Server = gethostbyname(argv[1]);
+
+
     if (Server == NULL)
     {   fprintf(stderr, "%s: no such host named '%s'\n", Program, argv[1]);
         exit(10);
     }
-    PortNo = atoi(argv[2]);
+
     if (PortNo <= 2000)
     {   fprintf(stderr, "%s: invalid port number %d, should be >2000\n",
 		Program, PortNo);
