@@ -1,4 +1,4 @@
-/* clientTextW8.cpp */
+/* clientTextW8.cpp - ALPHA COMPLETE */
 
 /* GTK_ClockClient.c: GUI example interactive TCP/IP client for ClockServer
  * Author: Rainer Doemer, 04/22/22 (based on simple ClockClient.c)
