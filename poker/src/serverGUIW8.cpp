@@ -280,6 +280,7 @@ void ProcessLoginRequest(		/* process a LOGININFO request by a client --user wil
             n = write(DataSocketFD, SendBuf.data(), SendBuf.size());     
 } /* end of ProcessRequest */
 
+// Updated post-alpha
 void ServerMainLoop(		/* simple server main loop */
 	int ServSocketFD,		/* server socket to wait on */
 	int Timeout)			/* timeout in micro seconds */
@@ -327,8 +328,7 @@ void ServerMainLoop(		/* simple server main loop */
                     printf("%s: Accepting new client...\n", Program);
         #endif
                     ClientLen = sizeof(ClientAddress);
-                    DataSocketFD = accept(ServSocketFD,
-                        (struct sockaddr*)&ClientAddress, &ClientLen);
+                    DataSocketFD = accept(ServSocketFD, (struct sockaddr*)&ClientAddress, &ClientLen);
                     if (DataSocketFD < 0)
                     {   FatalError("data socket creation (accept) failed");
                     }
@@ -351,8 +351,8 @@ void ServerMainLoop(		/* simple server main loop */
                     printf("%s: Closing client connection FD%d.\n",
                         Program, i);
         #endif
-                    close(i);
-                    FD_CLR(i, &ActiveFDs);
+                    //close(i); -- Update 5/27, after alpha
+                    // FD_CLR(i, &ActiveFDs); -- Update after alpha
                     }
                 }
                 }
@@ -374,9 +374,9 @@ int main(			/* the main function */
     GtkWidget *Window;	/* the server window */
 
     Program = argv[0];	/* publish program name (for diagnostics) */
-#ifdef DEBUG
-    printf("%s: Starting...\n", Program);
-#endif
+    #ifdef DEBUG
+        printf("%s: Starting...\n", Program);
+    #endif
     if (argc < 2){   /* NEW:  DEFAULT CASE */
         //fprintf(stderr, "Usage: %s port\n", Program);
 	    //exit(10);
@@ -390,26 +390,26 @@ int main(			/* the main function */
 		Program, PortNo);
         exit(10);
     }
-#ifdef DEBUG
-    printf("%s: Creating the server socket...\n", Program);
-#endif
+    #ifdef DEBUG
+        printf("%s: Creating the server socket...\n", Program);
+    #endif
     ServSocketFD = MakeServerSocket(PortNo);
 
-#ifdef DEBUG
-    printf("%s: Creating the server window...\n", Program);
-#endif
+    #ifdef DEBUG
+        printf("%s: Creating the server window...\n", Program);
+    #endif
     Window = CreateWindow(&argc, &argv);
     if (!Window)
     {   fprintf(stderr, "%s: cannot create GUI window\n", Program);
         exit(10);
     }
-#ifdef DEBUG
-    printf("%s: Providing current time at port %d...\n", Program, PortNo);
-#endif
+    #ifdef DEBUG
+        printf("%s: Providing current time at port %d...\n", Program, PortNo);
+    #endif
     ServerMainLoop(ServSocketFD, 250000);
-#ifdef DEBUG
-    printf("\n%s: Shutting down.\n", Program);
-#endif
+    #ifdef DEBUG
+        printf("\n%s: Shutting down.\n", Program);
+    #endif
     close(ServSocketFD);
     return 0;
 } /* end of main */

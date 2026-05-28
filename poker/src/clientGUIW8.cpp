@@ -31,6 +31,7 @@ const char *Program	/* program name for descriptive diagnostics */
 	= NULL;
 struct sockaddr_in
 	ServerAddress;	/* server address we connect with */
+int SocketFD = 0; // used by several programs
 
 
 /*** global functions ****************************************************/
@@ -48,24 +49,13 @@ void FatalError(		/* print error diagnostics and abort */
 
 LOGININFO Talk2ServerLogin(LOGININFO loginInfo){	/* communicate with the server */
     int n;
-    int SocketFD;
-
-    /* Connecting to Server*/
-    SocketFD = socket(AF_INET, SOCK_STREAM, 0);
-    if (SocketFD < 0){   
-        FatalError("socket creation failed");
-    }
-    if (connect(SocketFD, (struct sockaddr*)&ServerAddress,
-            sizeof(struct sockaddr_in)) < 0){   
-                FatalError("connecting to server failed");
-    }
 
     /* Creating buffer, sending it to server */
     BUF RecvBuf(2000); /* message buffer for receiving a message -- think the max for login and game is well below 2000 bytes, but using this just in case */
     BUF SendBuf; /* message buffer for sending a response */
 
     SendBuf = createBuffer(loginInfo);
-    n = write(SocketFD, SendBuf.data(), 2000);
+    n = write(SocketFD, SendBuf.data(), SendBuf.size());
     if (n < 0){   
         FatalError("writing to socket failed");
     }
@@ -75,7 +65,7 @@ LOGININFO Talk2ServerLogin(LOGININFO loginInfo){	/* communicate with the server 
     if (n < 0) {   
         FatalError("reading from socket failed");
     }
-    close(SocketFD);
+    RecvBuf.resize(n);
 
     // Wrapup:  Getting new structure and returning it
     loginInfo = parsingLoginArguments(RecvBuf);
@@ -550,11 +540,29 @@ int main(int argc, char *argv[]){
     ServerAddress.sin_port = htons(PortNo);
     ServerAddress.sin_addr = *(struct in_addr*)Server->h_addr_list[0];
 
+    // Creating socket
+    // int n;
+    //int SocketFD;
+
+    /* Connecting to Server*/
+    SocketFD = socket(AF_INET, SOCK_STREAM, 0);
+    if (SocketFD < 0){   
+        FatalError("socket creation failed");
+    }
+    if (connect(SocketFD, (struct sockaddr*)&ServerAddress,
+            sizeof(struct sockaddr_in)) < 0){   
+                FatalError("connecting to server failed");
+    }
+
 
     /* LOGIN MENU */
     LOGININFO loginInfo;
     loginInfo = Talk2ServerLogin(loginInfo);
     MainMenu(&argc, &argv, loginInfo);
+
+
+    // Wrapup
+    close(SocketFD);
     
 }
 
