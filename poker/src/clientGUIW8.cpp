@@ -485,7 +485,8 @@ void MainMenu(int *argc, char **argv[], LOGININFO &loginInfo){
     g_signal_connect(Window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
     /* overall vertical arrangement in the window */
-    MainDisplay = gtk_vbox_new(FALSE, 10);
+    // MainDisplay = gtk_vbox_new(FALSE, 10);
+    MainDisplay = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     gtk_container_add(GTK_CONTAINER(Window), MainDisplay);
 
     // Running the menu

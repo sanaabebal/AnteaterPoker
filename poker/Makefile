@@ -2,8 +2,8 @@
 SHARED = ./src/cards.hpp ./src/data.hpp
 OBJ = g++ -c -Wall
 
-GTK_CFLAGS = $(shell pkg-config --cflags gtk+-2.0)
-GTK_LIBS = $(shell pkg-config --libs gtk+-2.0)
+GTK_CFLAGS = $(shell pkg-config --cflags gtk+-3.0)
+GTK_LIBS = $(shell pkg-config --libs gtk+-3.0)
 
 all:  ./bin/poker_client ./bin/poker_server
 	@echo ""
@@ -49,7 +49,7 @@ cards.o:  ./src/cards.cpp ./src/cards.hpp
 
 # Incorrectly named/organized object files  (will be addressed in later versions)
 serverGUIW8.o:  ./src/serverGUIW8.cpp $(SHARED)
-	g++ -c $(GTK_CFLAGS) ./src/serverGUIW8.cpp -o serverGUIW8.o $(pkg-config --cflags --libs gtk+-2.0)
+	g++ -c $(GTK_CFLAGS) ./src/serverGUIW8.cpp -o serverGUIW8.o $(pkg-config --cflags --libs gtk+-3.0)
 
 DataTransfer.o:  ./src/DataTransfer.cpp ./src/DataTransfer.hpp $(SHARED)
 	g++ -c ./src/DataTransfer.cpp -o DataTransfer.o

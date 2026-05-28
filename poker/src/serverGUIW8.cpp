@@ -84,7 +84,8 @@ GtkWidget *CreateWindow(	/* create the server window */
     gtk_container_set_border_width (GTK_CONTAINER(Window), 10);
 
     /* overall vertical arrangement in the window */
-    VBox = gtk_vbox_new(FALSE, 10);
+    // VBox = gtk_vbox_new(FALSE, 10);
+    VBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     gtk_container_add(GTK_CONTAINER(Window), VBox);
 
     /* on the top, put player 1's info; from there, keep going down the list of players*/
