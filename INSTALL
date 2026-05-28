@@ -1,26 +1,42 @@
-1. System Requirements
+ALPHA VERSION INSTALLATION INSTRUCTIONS
+
+1.  System requirements
 The user must satisfy the following conditions to correctly install the software:
-    * The user must have enough storage space on their computer to download the program
-    * The user must be able to access and use the command line to start the program
-    * The user must have RHEL8 64-bit Linux
-    * The user must have access to standard C, GTK 3.0, C++, and GTK++ library
-    * The user must be able to log onto a UCI EECS server for proper TCP/IP execution
+* The user must have enough storage space on their computer to download the program
+* The user must be able to access and use the command line to start the program
+* The user must have RHEL8 64-bit Linux
+* The user must have the GTK 2.0 library and all relevant supporting tools installed
+* The user must have access to the EECS server (to run the program without execution flags)
 
-2. Setup and Configuration
-Download the package.  Using the command line, go into the installed folder.
 
-For the binary package, run the executable program on the command line as follows (more details are in parentheses):  
-    % gtar xvzf Poker_V1.0.tar.gz (extract contents into current directory)
-    % evince poker/doc/Poker_UserManual.pdf (for reading documentation, if desired)
-    % poker/bin/poker (run executable file)
+2.  Setup and Configuration
+Access the program from UCI's servers (for grading purposes only).  Using the command line, go into the installed folder.
 
-For the source package, build the software using the following command line instructions (more details are in parentheses):
-    % gtar xvzf Poker_V1.0_src.tar.gz (extract contents into current directory)
-    % evince poker/doc/Poker_UserManual.pdf (for reading documentation, if desired)
-    % cd poker (go into chess directory)
-    % make (make executable file)
-    % make test (for testing code, if desired)
-    % make clean (to remove executables once finished, if desired)
+To compile Anteater Poker, you must have GTK 2.0 development headers installed on your local system.
 
-3. Uninstalling
-Through the command line, the user can uninstall the program by calling make clean (see above), then going one directory above the installed directory and calling rmdir -rf PokerDirectoryName, with PokerDirectoryName being the name of the directory that was downloaded by the user (the user may have decided to rename the directory, so be sure to check its current name).
+
+For the binary package Poker_Alpha.tar.gz, run the executable program on the command line as follows:
+% gtar xvzf Poker_Alpha.tar.gz (extract contents into current directory)
+% evince poker/doc/Poker_UserManual.pdf (for reading documentation, if desired)
+% poker/bin/poker_client (run executable file for client)
+% poker/bin/poker_server (run executable file for server)
+
+For Poker_Alpha_src.tar.gz:
+* Extract the Source Package
+  * gtar xvzf Poker_Alpha_src.tar.gz
+  * cd poker
+* Build the Software
+  * make
+* Run the Executable
+  * bin/poker_server (to run the server--can take flag for port number)
+  * bin/poker_client (to run the client--can take flags for server name and port number)
+* Remove compiled object files
+  * cd ../src
+  * make clean
+
+
+3.  Uninstalling
+Through the command line, the user can uninstall the program by calling make clean (see above),
+then going one directory above the installed directory and calling rmdir -rf PokerDirectoryName,
+with PokerDirectoryName being the name of the directory that was downloaded by the user
+(the user may have decided to rename the directory, so be sure to check its current name).
