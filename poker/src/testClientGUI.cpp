@@ -16,8 +16,8 @@
 LOGININFO playerLoginInfo;
 GAMESTATE logGameState;
 
-#define CARD_W 200
-#define CARD_H 300
+#define CARD_W 100
+#define CARD_H 150
 
 
 /******** GUI Functions **************************************************/
@@ -149,6 +149,10 @@ void InitGameScreenWindow(GAMESTATE &gameState, int playerNum){
         Card foundCard;
         for(int i=0; i<2; i++){
             foundCard = gameState.allCards[playerNum][i];
+            if(foundCard.getValue() == Anteater){
+                gameWindow.playerCards[i] = createScaledImage(anteaterRef.c_str(), CARD_W, CARD_H);
+                continue;
+            }
             cardStr = mainDeckRef[foundCard.getSuit()][foundCard.getValue()];
             gameWindow.playerCards[i] = createScaledImage(cardStr.c_str(), CARD_W, CARD_H);
         }
@@ -163,6 +167,10 @@ void InitGameScreenWindow(GAMESTATE &gameState, int playerNum){
                 gameWindow.commCards[i] = createScaledImage(backRef.c_str(), CARD_W, CARD_H);
             } else{
                 foundCard = gameState.allCards[gameState.allCards.size()-2][i]; // ex:  player1, player2, player3, _commCards_, restOfCards
+                if(foundCard.getValue() == Anteater){
+                    gameWindow.commCards[i] = createScaledImage(anteaterRef.c_str(), CARD_W, CARD_H);
+                    continue;
+                } 
                 cardStr = mainDeckRef[foundCard.getSuit()][foundCard.getValue()];
                 gameWindow.commCards[i] = createScaledImage(cardStr.c_str(), CARD_W, CARD_H);
             }
@@ -289,7 +297,7 @@ int main(int argc, char *argv[]){
         PILE player3Cards = {{Anteater, Anteaters}, {Queen, Spades}};
         // PILE player4Cards = {{King, Hearts}, {Ace, Spades}}; simulating eliminated player
 
-        PILE commCards = {{Three, Spades}, {Four, Spades}, {Five, Spades}, {Six, Spades}};
+        PILE commCards = {{Three, Spades}, {Four, Spades}, {Five, Spades}, {Six, Spades}, {Anteater, Anteaters}};
         PILE restOfCards = {{Anteater, Anteaters}}; // not actually really needed...so creating dummy vector
 
         logGameState.allCards = {player1Cards, player2Cards, player3Cards, commCards, restOfCards};
