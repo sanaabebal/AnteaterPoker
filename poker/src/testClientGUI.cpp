@@ -16,12 +16,17 @@
 LOGININFO playerLoginInfo;
 GAMESTATE logGameState;
 
+#define CARD_W 200
+#define CARD_H 300
+
 
 /******** GUI Functions **************************************************/
 GtkWidget *Window;
 GtkWidget *MainDisplay;
 
 typedef struct gamewindow{
+    GtkWidget *MainDisplaySub;
+
     GtkWidget *logScrollBox;
         GtkWidget *logEvents;
         GtkTextBuffer *logEventsBuffer;
@@ -63,9 +68,9 @@ std::string mainDeckRef[4][13] = {
     {"assets/Diamonds/Diamond 2.png", "assets/Diamonds/Diamond 3.png", "assets/Diamonds/Diamond 4.png", "assets/Diamonds/Diamond 5.png", 
         "assets/Diamonds/Diamond 6.png", "assets/Diamonds/Diamond 7.png", "assets/Diamonds/Diamond 8.png", "assets/Diamonds/Diamond 9.png", "assets/Diamonds/Diamond 10.png", 
         "assets/Diamonds/Diamond J.png", "assets/Diamonds/Diamond Q.png", "assets/Diamonds/Diamond K.png", "assets/Diamonds/Diamond A.png"},
-    {"assets/Spades/Spade 2.png", "assets/Spades/Spade 3.png", "assets/Spades/Spade 4.png", "assets/Spades/Spade 5.png", 
-        "assets/Spades/Spade 6.png", "assets/Spades/Spade 7.png", "assets/Spades/Spade 8.png", "assets/Spades/Spade 9.png", "assets/Spades/Spade 10.png", 
-        "assets/Spades/Spade J.png", "assets/Spades/Spade Q.png", "assets/Spades/Spade K.png", "assets/Spades/Spade A.png"}
+    {"assets/Spades/Spades 2.png", "assets/Spades/Spades 3.png", "assets/Spades/Spades 4.png", "assets/Spades/Spades 5.png", 
+        "assets/Spades/Spades 6.png", "assets/Spades/Spades 7.png", "assets/Spades/Spades 8.png", "assets/Spades/Spades 9.png", "assets/Spades/Spades 10.png", 
+        "assets/Spades/Spades J.png", "assets/Spades/Spades Q.png", "assets/Spades/Spades K.png", "assets/Spades/Spades A.png"}
 };
 
 std::string anteaterRef = "assets/Anteater.png";
@@ -75,8 +80,38 @@ std::string backRef = "assets/Back.png";
 
 
 void InitGameScreenWindow(GAMESTATE &gameState, int playerNum);
+GtkWidget *createScaledImage(const char *filename, int w, int h);
+
+GtkWidget *createScaledImage(const char *filename, int w, int h){
+    GError *error = NULL;
+    GtkWidget *newImage;
+
+    GdkPixbuf *pixBuf = gdk_pixbuf_new_from_file_at_scale(filename, w, h, TRUE, &error);
+
+    char msg[500];
+    sprintf(msg, "Couldn't find %s", filename);
+
+    if(error != NULL){
+        g_error_free(error);
+        newImage = gtk_label_new(msg);
+        return newImage;
+    }
+
+    newImage = gtk_image_new_from_pixbuf(pixBuf);
+    g_object_unref(pixBuf);
+
+    // Wrapup
+    return newImage;
+}
+
+
 
 void resetMainDisplay(){
+    if(MainDisplay == NULL){
+        printf("MainDisplay is NULL.\n");
+        return;
+    }
+
     GList *children = gtk_container_get_children(GTK_CONTAINER(MainDisplay)); // returns a doubly-linked list of pointers to children GtkWidgets
     GList *i;
 
@@ -115,7 +150,7 @@ void InitGameScreenWindow(GAMESTATE &gameState, int playerNum){
         for(int i=0; i<2; i++){
             foundCard = gameState.allCards[playerNum][i];
             cardStr = mainDeckRef[foundCard.getSuit()][foundCard.getValue()];
-            gameWindow.playerCards[i] = gtk_image_new_from_file(cardStr.c_str());
+            gameWindow.playerCards[i] = createScaledImage(cardStr.c_str(), CARD_W, CARD_H);
         }
 
         if(gameState.allCards.size() < 3){
@@ -125,11 +160,11 @@ void InitGameScreenWindow(GAMESTATE &gameState, int playerNum){
         for(int i=0; i<5; i++){
             int r = gameState.round;
             if(  r == Preflop || (r == Flop && i>2) || (r == Turn && i>3)  ){
-                gameWindow.commCards[i] = gtk_image_new_from_file(backRef.c_str());
+                gameWindow.commCards[i] = createScaledImage(backRef.c_str(), CARD_W, CARD_H);
             } else{
                 foundCard = gameState.allCards[gameState.allCards.size()-2][i]; // ex:  player1, player2, player3, _commCards_, restOfCards
                 cardStr = mainDeckRef[foundCard.getSuit()][foundCard.getValue()];
-                gameWindow.commCards[i] = gtk_image_new_from_file(cardStr.c_str());
+                gameWindow.commCards[i] = createScaledImage(cardStr.c_str(), CARD_W, CARD_H);
             }
         }
     
@@ -151,61 +186,62 @@ void InitGameScreenWindow(GAMESTATE &gameState, int playerNum){
     
     /*  Creating extra boxes; Staging  */ 
     // Boxes
-        // Main Display
-        MainDisplay = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
-        gtk_container_add(GTK_CONTAINER(Window), MainDisplay);
+        // Main Display -- now done in main function instead
+        gameWindow.MainDisplaySub = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+        gtk_box_pack_start(GTK_BOX(MainDisplay), gameWindow.MainDisplaySub, TRUE, TRUE, 5);
+        
 
         // Overarching boxes
         gameWindow.playersAndCardsBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-        gtk_container_add(GTK_CONTAINER(MainDisplay), gameWindow.playersAndCardsBox);
+        gtk_box_pack_start(GTK_BOX(gameWindow.MainDisplaySub), gameWindow.playersAndCardsBox, TRUE, TRUE, 0);
         gameWindow.movesAndLogBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-        gtk_container_add(GTK_CONTAINER(MainDisplay), gameWindow.movesAndLogBox);
+        gtk_box_pack_start(GTK_BOX(gameWindow.MainDisplaySub), gameWindow.movesAndLogBox, TRUE, TRUE, 0);
 
         // Players
         gameWindow.playerIconsBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
-        gtk_container_add(GTK_CONTAINER(gameWindow.playersAndCardsBox), gameWindow.playerIconsBox);
+        gtk_box_pack_start(GTK_BOX(gameWindow.playersAndCardsBox), gameWindow.playerIconsBox, FALSE, FALSE, 2);
         for(unsigned int i=0; i<gameState.players.size(); i++){
-            gtk_container_add(GTK_CONTAINER(gameWindow.playerIconsBox), gameWindow.playerIcons[i]);
+            gtk_box_pack_start(GTK_BOX(gameWindow.playerIconsBox), gameWindow.playerIcons[i], FALSE, TRUE, 0);
         }
 
         // CardBox
         gameWindow.cardsBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-        gtk_container_add(GTK_CONTAINER(gameWindow.playersAndCardsBox), gameWindow.cardsBox);
+        gtk_box_pack_start(GTK_BOX(gameWindow.playersAndCardsBox), gameWindow.cardsBox, FALSE, TRUE, 2);
         // CommCards
-        gameWindow.commCardsBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
-        gtk_container_add(GTK_CONTAINER(gameWindow.cardsBox), gameWindow.commCardsBox);
+        gameWindow.commCardsBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0); // reducing space btw cards
+        gtk_box_pack_start(GTK_BOX(gameWindow.cardsBox), gameWindow.commCardsBox, FALSE, TRUE, 2);
         for(int i=0; i<5; i++){
-            gtk_container_add(GTK_CONTAINER(gameWindow.commCardsBox), gameWindow.commCards[i]);
+            gtk_box_pack_start(GTK_BOX(gameWindow.commCardsBox), gameWindow.commCards[i], FALSE, TRUE, 0);
         }
         // PlayerCards
-        gameWindow.playerCardsBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
-        gtk_container_add(GTK_CONTAINER(gameWindow.cardsBox), gameWindow.playerCardsBox);
+        gameWindow.playerCardsBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0); // reducing space btw cards
+        gtk_box_pack_start(GTK_BOX(gameWindow.cardsBox), gameWindow.playerCardsBox, FALSE, TRUE, 2);
         for(int i=0; i<2; i++){
-            gtk_container_add(GTK_CONTAINER(gameWindow.playerCardsBox), gameWindow.playerCards[i]);
+            gtk_box_pack_start(GTK_BOX(gameWindow.playerCardsBox), gameWindow.playerCards[i], FALSE, TRUE, 0);
         }
 
 
         // Moves
         gameWindow.playerInputBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-        gtk_container_add(GTK_CONTAINER(gameWindow.movesAndLogBox), gameWindow.playerInputBox);
+        gtk_box_pack_start(GTK_BOX(gameWindow.movesAndLogBox), gameWindow.playerInputBox, FALSE, TRUE, 2);
         
-        gtk_container_add(GTK_CONTAINER(gameWindow.playerInputBox), gameWindow.callButton);
+        gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.callButton, FALSE, FALSE, 2);
         gameWindow.raiseBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
-        gtk_container_add(GTK_CONTAINER(gameWindow.playerInputBox), gameWindow.raiseBox);
-        gtk_container_add(GTK_CONTAINER(gameWindow.raiseBox), gameWindow.raiseEntry);
-        gtk_container_add(GTK_CONTAINER(gameWindow.raiseBox), gameWindow.raiseButton);
-        gtk_container_add(GTK_CONTAINER(gameWindow.playerInputBox), gameWindow.foldButton);
+        gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.raiseBox, FALSE, FALSE, 2);
+        gtk_box_pack_start(GTK_BOX(gameWindow.raiseBox), gameWindow.raiseEntry, FALSE, FALSE, 2);
+        gtk_box_pack_start(GTK_BOX(gameWindow.raiseBox), gameWindow.raiseButton, FALSE, FALSE, 2);
+        gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.foldButton, FALSE, FALSE, 2);
         // gtk_container_add(GTK_CONTAINER(gameWindow.playerInputBox), gameWindow.InputError); -- Don't want to display this unless there is an actual input error
-        gtk_container_add(GTK_CONTAINER(gameWindow.playerInputBox), gameWindow.helpMenuButton);
-        gtk_container_add(GTK_CONTAINER(gameWindow.playerInputBox), gameWindow.ShutdownButton);
+        gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.helpMenuButton, FALSE, FALSE, 2);
+        gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.ShutdownButton, FALSE, FALSE, 2);
 
 
         // Logs
         // gameWindow.logScrollBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-        gtk_container_add(GTK_CONTAINER(gameWindow.movesAndLogBox), gameWindow.logScrollBox);
+        gtk_box_pack_start(GTK_BOX(gameWindow.movesAndLogBox), gameWindow.logScrollBox, TRUE, TRUE, 2);
 
         // Moves (and raiseBox)
-        gameWindow.raiseBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+        // gameWindow.raiseBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
         
         
 
@@ -234,10 +270,10 @@ int main(int argc, char *argv[]){
 
     g_signal_connect(Window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
-    /* overall vertical arrangement in the window -- now done through Init function */
+    /* overall vertical arrangement in the window */
     // MainDisplay = gtk_vbox_new(FALSE, 10);
-    // MainDisplay = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    // gtk_container_add(GTK_CONTAINER(Window), MainDisplay);
+    MainDisplay = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_container_add(GTK_CONTAINER(Window), MainDisplay);
 
     #ifndef TESTING
         // Setting up stuff (LOGININFO)
@@ -282,7 +318,7 @@ int main(int argc, char *argv[]){
     #endif
 
     // Testing display
-    for(int i=0; i<4; i++){
+    for(int i=0; i<1; i++){
         InitGameScreenWindow(logGameState, i);
 
         gtk_widget_show_all(Window);
