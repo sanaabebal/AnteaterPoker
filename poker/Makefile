@@ -31,6 +31,8 @@ test-gui:  ./bin/testAlphaClientGUI ./bin/testAlphaServer
 # @echo "---------PLEASE RUN bin/testAlphaClientGUI serverName 10080 IF YOU ARE NOT USING THE BONDI SERVER--------"
 # ./bin/testAlphaServer 10080
 
+LHTEST:  ./bin/testGUIW9
+
 
 # Main executables
 ./bin/poker_server:  serverGUIW8.o cards.o DataTransfer.o
@@ -79,6 +81,9 @@ clientGUIW8.o:  ./src/clientGUIW8.cpp $(SHARED)
 
 ./bin/testAlphaClientGUI:  clientGUIW8.o cards.o DataTransfer.o
 	g++ -Wall clientGUIW8.o cards.o DataTransfer.o -o ./bin/testAlphaClientGUI $(GTK_LIBS)
+
+./bin/testGUIW9:  src/testClientGUI.cpp $(SHARED)
+	g++ -Wall src/testClientGUI.cpp -o ./bin/testGUIW9 $(GTK_LIBS) $(GTK_CFLAGS)
 
 
 # Testing object files
