@@ -1,8 +1,8 @@
-All In Presents:  Anteater Poker (Version 1.0)
+All In Presents:  Anteater Poker (Beta Version)
 
 Authors:  Sanaa Bebal, Ava Chinn, Alonso De La Cruz Becerra, Estrella Distancia Zamora, Lauren Howe, David Lee, and Samuel Kim
 
-Alpha version release date (Version 1.0):  May 23rd, 2026 (10 AM PDT)
+Beta version release date:  June 1st, 2026 (10 AM PDT)
 
 Please enjoy our program!
 
@@ -13,17 +13,22 @@ Getting Started:
 * See doc/Poker_SoftwareSpec.pdf for the software specification
 
 **********************************************************
-Alpha Version Notes:
+Beta Version Notes:
 * The program is intended to have the user connect to the server to get the information needed for logging in, 
         allow the player to go through the login menu based on whether or not they are the host,
         and send that information from the login menu to the server, which will then be reflected on the server GUI.
-        The player will then be sent to a waiting screen/exit screen, as this is as far as the program has gone at this point.
+        The player will then be sent to a waiting screen/exit screen, until all players have logged in.  Once all players have logged in, the display will go to an initial game screen--cards will be dealt and displayed as if in the preflop round.  The buttons do not currently do anything.
 * In the event that the server is refusing to initialize because it says the port is already in use, 
-            please use the following commands (or wait a few minutes for the port to clear again):
-        bin/poker_server 10081  # or any port number in the range 10081 - 10089
-        bin/poker_client serverName 10081 # or the same port numbre in the range 10081 - 10089
-* Multiple players can log on, but they must log on one at a time.  If multiple players have the login screen open (i.e. have the
-                GUI open but have not reached the wait screen yet), the info they will have will be out of date (the program works by sending login data once to the client when they open the program, and then the client sends the updated version back to the server; the server can then send this updated version to the next client who connects, and so on)
+        please use the following commands (or wait a few minutes for the port to clear again):
+            bin/poker_server 10081  # or any port number in the range 10081 - 10089
+            bin/poker_client serverName 10081 # or the same port numbre in the range 10081 - 10089
+* Multiple players can log on, but they must log on one at a time.  If multiple players have the login screen open (i.e. have the 
+        GUI open but have not reached the wait screen yet), the info they will have will be out of date (the program works by sending login data once to the client when they open the program, and then the client sends the updated version back to the server; the server can then send this updated version to the next client who connects, and so on)
+* The wait screen may freeze after three seconds due to how the client program waits for its next instructions from the server.  It should unfreeze
+        once all players log on.  If it does not or the player needs to exit the program, use Control + C in the command line.
+* The jack cards in all suits are currently WIP, so the client GUI will instead display a message saying it couldn't find 
+    the jack of a certain suit in the event that a jack is dealt.
+* The pot, current call amount, and player ID are not implemented in the client GUI yet.
 * The user must use -X when logging onto the EECS server for the GTK display to work.
 * Please see Week8_AlphaVersion directory for git commit history
 

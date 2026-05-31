@@ -17,19 +17,40 @@ all:  ./bin/poker_client ./bin/poker_server
 clean:
 	rm -f *.o
 
-test:  ./bin/testCards ./bin/testData ./bin/testAlphaServer ./bin/testAlphaClient ./bin/testAlphaClientGUI
+test:  ./bin/testCards ./bin/testData ./bin/testAlphaServer ./bin/testAlphaClient ./bin/testAlphaClientGUI ./bin/testGUIW9 ./bin/testClientCommW9 ./bin/testServerCommW9
 	@echo ""
 	@echo ""
-	@echo "Testing file names:  bin/testCards bin/testData bin/testAlphaServer bin/testAlphaClient bin/testAlphaClientGUI"
+	@echo "Testing file names:  bin/testCards bin/testData bin/testAlphaServer bin/testAlphaClient bin/testAlphaClientGUI bin/testClientCommW9 bin/testServerCommW9 bin/testClientGUI"
+	bin/testData
+	bin/testGUIW9
+	bin/testServerCommW9 &
+	bin/testClientCommW9
 
-test-gui:  ./bin/testAlphaClientGUI ./bin/testAlphaServer
+test-gui test_gui:  ./bin/testGUIW9
 	@echo ""
 	@echo ""
-	@echo "---------STARTING SERVER GUI.  Please use another computer/Linux window to run bin/testAlphaClientGUI.----------"
-	./bin/testAlphaServer 10080
+	@echo "Testing client GUI for game"
+	./bin/testGUIW9
 
 # @echo "---------PLEASE RUN bin/testAlphaClientGUI serverName 10080 IF YOU ARE NOT USING THE BONDI SERVER--------"
 # ./bin/testAlphaServer 10080
+
+test-comm test_comm:  bin/testServerCommW9 bin/testClientCommW9
+	bin/testServerCommW9 &
+	hostname -I
+	bin/testClientCommW9
+
+test-server test_server:  bin/testAlphaServer
+	@echo ""
+	@echo ""
+	@echo "Testing server"
+	bin/testAlphaServer &
+
+test-client test_client:  bin/testAlphaClient
+	@echo ""
+	@echo ""
+	@echo "Testing client:  run bin/testAlphaClient hostname 10080"
+	hostname -I
 
 LHTEST:  ./bin/testGUIW9
 
@@ -94,6 +115,11 @@ stubFunctionsW9.o:  ./src/stubFunctionsW9.cpp $(SHARED)
 ./bin/testGUIW9:  src/testClientGUI.cpp $(SHARED)
 	g++ -Wall src/testClientGUI.cpp -o ./bin/testGUIW9 $(GTK_LIBS) $(GTK_CFLAGS)
 
+./bin/testServerCommW9:  testServerCommW9.o cards.o DataTransfer.o
+	g++ -Wall testServerCommW9.o cards.o DataTransfer.o -o ./bin/testServerCommW9 $(GTK_LIBS)
+
+./bin/testClientCommW9:  testClientCommW9.o cards.o DataTransfer.o
+	g++ -Wall testClientCommW9.o cards.o DataTransfer.o -o ./bin/testClientCommW9 $(GTK_LIBS)
 
 # Testing object files
 testCards.o:  ./src/testCards.cpp $(SHARED)
@@ -102,11 +128,16 @@ testCards.o:  ./src/testCards.cpp $(SHARED)
 testData.o:  ./src/testData.cpp $(SHARED)
 	$(OBJ) ./src/testData.cpp -o testData.o
 
+testServerCommW9.o:  ./src/testServerCommW9.cpp $(SHARED) src/DataTransfer.hpp
+	$(OBJ) ./src/testServerCommW9.cpp -o testServerCommW9.o $(GTK_CFLAGS)
+
+testClientCommW9.o:  ./src/testClientCommW9.cpp $(SHARED) src/DataTransfer.hpp
+	$(OBJ) ./src/testClientCommW9.cpp -o testClientCommW9.o $(GTK_CFLAGS)
 
 
 
 
 # Tar instructions
 tar:  
-	tar -zcvf Poker_Alpha.tar.gz ./README ./COPYRIGHT ./INSTALL ./bin ./doc/Poker_UserManual.pdf
-	tar -zcvf Poker_Alpha_src.tar.gz ./README ./COPYRIGHT ./INSTALL ./doc ./bin ./src ./Makefile
+	tar -zcvf Poker_Beta.tar.gz ./README ./COPYRIGHT ./INSTALL ./bin ./doc/Poker_UserManual.pdf
+	tar -zcvf Poker_Beta_src.tar.gz ./README ./COPYRIGHT ./INSTALL ./assets ./doc ./bin ./src ./Makefile
