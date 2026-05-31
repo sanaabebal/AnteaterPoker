@@ -67,6 +67,8 @@ BUF createBuffer(GAMESTATE gameState){
     addToBuf(answer, gameState.callAmount);
     // Seventh entry:  player turn (int)
     addToBuf(answer, gameState.playerTurn);
+    // NEW BETA:  Eighth entry:  greatest bet (int) (MAY30)
+    addToBuf(answer, gameState.greatest);
 
     // Eigth entry:  PILES allCards
     addVecVecToBuf(answer, gameState.allCards);
@@ -179,6 +181,7 @@ GAMESTATE parsingGameArguments(BUF &buf){
     processBuf(buf, index, answer.pot);
     processBuf(buf, index, answer.callAmount);
     processBuf(buf, index, answer.playerTurn);
+    processBuf(buf, index, answer.greatest); // NEW IN BETA (MAY30)
 
 
     // Eigth entry:  PILES allCards

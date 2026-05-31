@@ -35,11 +35,11 @@ LHTEST:  ./bin/testGUIW9
 
 
 # Main executables
-./bin/poker_server:  serverGUIW8.o cards.o DataTransfer.o
-	g++ -Wall serverGUIW8.o cards.o DataTransfer.o -o ./bin/poker_server $(GTK_LIBS)
+./bin/poker_server:  serverGUIW9.o cards.o DataTransfer.o stubFunctionsW9.o
+	g++ -Wall serverGUIW9.o cards.o DataTransfer.o stubFunctionsW9.o -o ./bin/poker_server $(GTK_LIBS)
 
-./bin/poker_client:  clientGUIW8.o cards.o DataTransfer.o
-	g++ -Wall clientGUIW8.o cards.o DataTransfer.o -o ./bin/poker_client $(GTK_LIBS)
+./bin/poker_client:  clientGUIW9.o cards.o DataTransfer.o stubFunctionsW9.o
+	g++ -Wall clientGUIW9.o cards.o DataTransfer.o stubFunctionsW9.o -o ./bin/poker_client $(GTK_LIBS)
 
 
 
@@ -61,6 +61,15 @@ clientTextW8.o:  ./src/clientTextW8.cpp $(SHARED)
 
 clientGUIW8.o:  ./src/clientGUIW8.cpp $(SHARED)
 	g++ -c $(GTK_CFLAGS) ./src/clientGUIW8.cpp -o clientGUIW8.o
+
+serverGUIW9.o:  ./src/serverGUIW9.cpp $(SHARED)
+	g++ -c $(GTK_CFLAGS) ./src/serverGUIW9.cpp -o serverGUIW9.o $(pkg-config --cflags --libs gtk+-3.0)
+
+clientGUIW9.o:  ./src/clientGUIW9.cpp $(SHARED)
+	g++ -c $(GTK_CFLAGS) ./src/clientGUIW9.cpp -o clientGUIW9.o
+
+stubFunctionsW9.o:  ./src/stubFunctionsW9.cpp $(SHARED)
+	g++ -c $(GTK_CFLAGS) ./src/stubFunctionsW9.cpp -o stubFunctionsW9.o
 
 
 
