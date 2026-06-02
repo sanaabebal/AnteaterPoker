@@ -19,7 +19,7 @@
 #include "cards.hpp"
 #include "data.hpp"
 #include "DataTransfer.hpp"
-#include "stubFunctionsW9.hpp" // FIX THIS!!!
+#include "gamestate.hpp" // FIX THIS!!!
 
 #define DEFAULT_PORT 10080
 
@@ -342,14 +342,14 @@ void ProcessGameStateRequest(int DataSocketFD, BUF RecvBuf){
                 gameStarted = 1;
                 officialGameState.numPlayers = players.size();
                 officialGameState.players = players;
+                printf("OFFICIAL STARTING GAME STATE:  \n");
+                officialGameState.PrintGameState();
 
                 // ZZZ:  MAY NEED TO FIX THIS IN LATER VERSIONS BY CALLING A ROUNDS LOOP INSTEAD...
                 #ifndef TESTING
                     PILE deck = refDeck;
-                    for(int i=0; i<7; i++){
-                        deck = oneShuffle(deck);
-                    }
-                    officialGameState.allCards = deal(deck, officialGameState.numPlayers);
+                    deck = shuffle(deck);
+                    officialGameState.allCards = deal(deck, officialGameState.numPlayers, officialGameState.dealerPlayer);
                     MessageAllClients(); // send all clients copy of the initial, global officialGameState
 
                 #endif

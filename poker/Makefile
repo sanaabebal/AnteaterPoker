@@ -56,11 +56,11 @@ LHTEST:  ./bin/testGUIW9
 
 
 # Main executables
-./bin/poker_server:  serverGUIW9.o cards.o DataTransfer.o stubFunctionsW9.o
-	g++ -Wall serverGUIW9.o cards.o DataTransfer.o stubFunctionsW9.o -o ./bin/poker_server $(GTK_LIBS)
+./bin/poker_server:  serverGUIW9.o cards.o DataTransfer.o gamestate.o
+	g++ -Wall serverGUIW9.o cards.o DataTransfer.o gamestate.o -o ./bin/poker_server $(GTK_LIBS)
 
-./bin/poker_client:  clientGUIW9.o cards.o DataTransfer.o stubFunctionsW9.o
-	g++ -Wall clientGUIW9.o cards.o DataTransfer.o stubFunctionsW9.o -o ./bin/poker_client $(GTK_LIBS)
+./bin/poker_client:  clientGUIW9.o cards.o DataTransfer.o gamestate.o
+	g++ -Wall clientGUIW9.o cards.o DataTransfer.o gamestate.o -o ./bin/poker_client $(GTK_LIBS)
 
 
 
@@ -92,6 +92,8 @@ clientGUIW9.o:  ./src/clientGUIW9.cpp $(SHARED)
 stubFunctionsW9.o:  ./src/stubFunctionsW9.cpp $(SHARED)
 	g++ -c $(GTK_CFLAGS) ./src/stubFunctionsW9.cpp -o stubFunctionsW9.o
 
+gamestate.o:  ./src/gamestate.cpp $(SHARED) ./src/gamestate.hpp
+	g++ -c $(GTK_CFLAGS) ./src/gamestate.cpp -o gamestate.o
 
 
 

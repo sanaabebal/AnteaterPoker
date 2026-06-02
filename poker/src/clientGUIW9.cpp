@@ -175,12 +175,12 @@ typedef struct gamewindow{
 GameWindow gameWindow;
 
 std::string mainDeckRef[4][13] = {
-    {"assets/Clovers/Clover 2.png", "assets/Clovers/Clover 3.png", "assets/Clovers/Clover 4.png", "assets/Clovers/Clover 5.png", 
-        "assets/Clovers/Clover 6.png", "assets/Clovers/Clover 7.png", "assets/Clovers/Clover 8.png", "assets/Clovers/Clover 9.png", "assets/Clovers/Clover 10.png", 
-        "assets/Clovers/Clover J.png", "assets/Clovers/Q Clover.png", "assets/Clovers/Clover K.png", "assets/Clovers/Clover A.png"},
     {"assets/Hearts/Heart 2.png", "assets/Hearts/Heart 3.png", "assets/Hearts/Heart 4.png", "assets/Hearts/Heart 5.png", 
         "assets/Hearts/Heart 6.png", "assets/Hearts/Heart 7.png", "assets/Hearts/Heart 8.png", "assets/Hearts/Heart 9.png", "assets/Hearts/Heart 10.png", 
         "assets/Hearts/Heart J.png", "assets/Hearts/Heart Q.png", "assets/Hearts/Heart K.png", "assets/Hearts/Heart A.png"},
+    {"assets/Clovers/Clover 2.png", "assets/Clovers/Clover 3.png", "assets/Clovers/Clover 4.png", "assets/Clovers/Clover 5.png", 
+        "assets/Clovers/Clover 6.png", "assets/Clovers/Clover 7.png", "assets/Clovers/Clover 8.png", "assets/Clovers/Clover 9.png", "assets/Clovers/Clover 10.png", 
+        "assets/Clovers/Clover J.png", "assets/Clovers/Q Clover.png", "assets/Clovers/Clover K.png", "assets/Clovers/Clover A.png"},
     {"assets/Diamonds/Diamond 2.png", "assets/Diamonds/Diamond 3.png", "assets/Diamonds/Diamond 4.png", "assets/Diamonds/Diamond 5.png", 
         "assets/Diamonds/Diamond 6.png", "assets/Diamonds/Diamond 7.png", "assets/Diamonds/Diamond 8.png", "assets/Diamonds/Diamond 9.png", "assets/Diamonds/Diamond 10.png", 
         "assets/Diamonds/Diamond J.png", "assets/Diamonds/Diamond Q.png", "assets/Diamonds/Diamond K.png", "assets/Diamonds/Diamond A.png"},
@@ -750,6 +750,10 @@ void InitGameScreenWindow(GAMESTATE &gameState, int playerNum);
 
 
         // Wrapup
+        printf("Player cards:  ");
+        printCard(officialGameState.allCards[playerLoginInfo.playerNum][0]);
+        printCard(officialGameState.allCards[playerLoginInfo.playerNum][1]);
+        printf("\n");
         gtk_widget_show_all(Window);
     }
     
