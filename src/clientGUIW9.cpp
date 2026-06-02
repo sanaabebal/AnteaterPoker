@@ -1,4 +1,4 @@
-/* clientTextW8.cpp - ALPHA COMPLETE */
+/* clientGUIW9.cpp - BETA */
 
 /* GTK_ClockClient.c: GUI example interactive TCP/IP client for ClockServer
  * Author: Rainer Doemer, 04/22/22 (based on simple ClockClient.c)
@@ -32,6 +32,9 @@ const char *Program	/* program name for descriptive diagnostics */
 struct sockaddr_in
 	ServerAddress;	/* server address we connect with */
 int SocketFD = 0; // used by several programs
+
+GAMESTATE officialGameState;
+LOGININFO playerLoginInfo;
 
 
 /*** global functions ****************************************************/
@@ -100,12 +103,97 @@ LOGININFO SendServerLogin(LOGININFO loginInfo){ // full process of sending LOGIN
 
 }
 
+GAMESTATE Talk2ServerGameState(GAMESTATE gameState){
+    int n;
+
+    /* Creating buffer, sending it to server */
+    BUF RecvBuf(2000); /* message buffer for receiving a message -- think the max for login and game is well below 2000 bytes, but using this just in case */
+    BUF SendBuf; /* message buffer for sending a response */
+
+    SendBuf = createBuffer(gameState);
+    printf("Dummy game state:  \n");
+    officialGameState.PrintGameState();
+
+    n = write(SocketFD, SendBuf.data(), SendBuf.size());
+    if (n < 0){   
+        FatalError("writing to socket failed");
+    }
+    
+    /* Getting response from server and closing the socket */
+    n = read(SocketFD, RecvBuf.data(), 2000);
+    if (n < 0) {   
+        FatalError("reading from socket failed");
+    }
+    RecvBuf.resize(n);
+
+    // Wrapup:  Getting new structure and returning it
+
+    gameState = parsingGameArguments(RecvBuf);
+    return gameState;
+
+}
+
 
 /******** GUI Functions **************************************************/
 GtkWidget *Window;
 GtkWidget *MainDisplay;
 GtkWidget *Entry;
 GtkWidget *InputError;
+
+typedef struct gamewindow{
+    GtkWidget *MainDisplaySub;
+
+    GtkWidget *logScrollBox;
+        GtkWidget *logEvents;
+        GtkTextBuffer *logEventsBuffer;
+    
+
+    GtkWidget *playerIconsBox;
+        GtkWidget *playerIcons[10];
+
+    GtkWidget *cardsBox;
+        GtkWidget *playerCardsBox;
+            GtkWidget *playerCards[2];
+        GtkWidget *commCardsBox;
+            GtkWidget *commCards[5];
+
+    GtkWidget *playerInputBox;
+        GtkWidget *callButton;
+        GtkWidget *raiseBox;
+            GtkWidget *raiseButton;
+            GtkWidget *raiseEntry;
+        GtkWidget *foldButton;
+        GtkWidget *InputError;
+        GtkWidget *helpMenuButton;
+        GtkWidget *ShutdownButton;
+
+
+    GtkWidget *playersAndCardsBox;
+    GtkWidget *movesAndLogBox;
+
+} GameWindow;
+GameWindow gameWindow;
+
+std::string mainDeckRef[4][13] = {
+    {"assets/Clovers/Clover 2.png", "assets/Clovers/Clover 3.png", "assets/Clovers/Clover 4.png", "assets/Clovers/Clover 5.png", 
+        "assets/Clovers/Clover 6.png", "assets/Clovers/Clover 7.png", "assets/Clovers/Clover 8.png", "assets/Clovers/Clover 9.png", "assets/Clovers/Clover 10.png", 
+        "assets/Clovers/Clover J.png", "assets/Clovers/Q Clover.png", "assets/Clovers/Clover K.png", "assets/Clovers/Clover A.png"},
+    {"assets/Hearts/Heart 2.png", "assets/Hearts/Heart 3.png", "assets/Hearts/Heart 4.png", "assets/Hearts/Heart 5.png", 
+        "assets/Hearts/Heart 6.png", "assets/Hearts/Heart 7.png", "assets/Hearts/Heart 8.png", "assets/Hearts/Heart 9.png", "assets/Hearts/Heart 10.png", 
+        "assets/Hearts/Heart J.png", "assets/Hearts/Heart Q.png", "assets/Hearts/Heart K.png", "assets/Hearts/Heart A.png"},
+    {"assets/Diamonds/Diamond 2.png", "assets/Diamonds/Diamond 3.png", "assets/Diamonds/Diamond 4.png", "assets/Diamonds/Diamond 5.png", 
+        "assets/Diamonds/Diamond 6.png", "assets/Diamonds/Diamond 7.png", "assets/Diamonds/Diamond 8.png", "assets/Diamonds/Diamond 9.png", "assets/Diamonds/Diamond 10.png", 
+        "assets/Diamonds/Diamond J.png", "assets/Diamonds/Diamond Q.png", "assets/Diamonds/Diamond K.png", "assets/Diamonds/Diamond A.png"},
+    {"assets/Spades/Spades 2.png", "assets/Spades/Spades 3.png", "assets/Spades/Spades 4.png", "assets/Spades/Spades 5.png", 
+        "assets/Spades/Spades 6.png", "assets/Spades/Spades 7.png", "assets/Spades/Spades 8.png", "assets/Spades/Spades 9.png", "assets/Spades/Spades 10.png", 
+        "assets/Spades/Spades J.png", "assets/Spades/Spades Q.png", "assets/Spades/Spades K.png", "assets/Spades/Spades A.png"}
+};
+
+std::string anteaterRef = "assets/Anteater.png";
+std::string backRef = "assets/Back.png";
+
+#define CARD_W 100
+#define CARD_H 150
 
 // Display function declarations
 void NameWindow(LOGININFO &loginInfo);
@@ -115,17 +203,44 @@ void PlayerNumWindow(LOGININFO &loginInfo);
 void PlayerTypeWindow(LOGININFO &loginInfo);
 void WaitScreenWindow(LOGININFO &loginInfo);
 
-void resetMainDisplay(){
-    GList *children = gtk_container_get_children(GTK_CONTAINER(MainDisplay)); // returns a doubly-linked list of pointers to children GtkWidgets
-    GList *i;
+gboolean WaitFreeze(gpointer na);
 
-    for(i = children; i != NULL; i = g_list_next(i)){ // looping through the list
-        gtk_container_remove(GTK_CONTAINER(MainDisplay), GTK_WIDGET(i->data));
+void InitGameScreenWindow(GAMESTATE &gameState, int playerNum);
+
+// Helper functions
+    void resetMainDisplay(){
+        GList *children = gtk_container_get_children(GTK_CONTAINER(MainDisplay)); // returns a doubly-linked list of pointers to children GtkWidgets
+        GList *i;
+
+        for(i = children; i != NULL; i = g_list_next(i)){ // looping through the list
+            gtk_container_remove(GTK_CONTAINER(MainDisplay), GTK_WIDGET(i->data));
+        }
+
+        // Wrapup:  Freeing list pointer
+        g_list_free(children);
     }
 
-    // Wrapup:  Freeing list pointer
-    g_list_free(children);
-}
+    GtkWidget *createScaledImage(const char *filename, int w, int h){
+        GError *error = NULL;
+        GtkWidget *newImage;
+
+        GdkPixbuf *pixBuf = gdk_pixbuf_new_from_file_at_scale(filename, w, h, TRUE, &error);
+
+        char msg[500];
+        sprintf(msg, "Couldn't find %s", filename);
+
+        if(error != NULL){
+            g_error_free(error);
+            newImage = gtk_label_new(msg);
+            return newImage;
+        }
+
+        newImage = gtk_image_new_from_pixbuf(pixBuf);
+        g_object_unref(pixBuf);
+
+        // Wrapup
+        return newImage;
+    }
 
 
 // Getting client name
@@ -454,20 +569,190 @@ void resetMainDisplay(){
 // Wait screen (also the exit screen for the alpha version)
     void WaitScreenWindow(LOGININFO &loginInfo){
         printf("Got to the wait screen!\n");
+        playerLoginInfo = loginInfo;
         GtkWidget *TextMessage;
         GtkWidget *AlphaEndMessage;
 
         TextMessage = gtk_label_new("Waiting for other players to join...");
-        AlphaEndMessage = gtk_label_new("This is as far as we got for the alpha version of the anteater poker project.  Thank you for participating!  The server GUI should now display some info about your login");
+        AlphaEndMessage = gtk_label_new("This is as far as we got for the alpha version of the anteater poker project.  Thank you for participating!  The server GUI should now display some info about your login\n\nHeads up:  For the beta version, this screen will freeze after 3 seconds until the last person logs on.  Don't worry, though--you should still be able to do other things on your computer while in this wait menu!");
+
+        // printf("Labels created.\n");
 
         // Adding/staging elements
         gtk_container_add(GTK_CONTAINER(MainDisplay), TextMessage);
         gtk_container_add(GTK_CONTAINER(MainDisplay), AlphaEndMessage);
 
+        // printf("Staging complete.\n");
+
         // Displaying elements
         gtk_widget_show_all(Window);
 
+        // printf("Elements displayed.\n");
+
+
+        // Getting initial gamestate
+        // printf("Going to stalemate.\n");
+        
+
+        // Want to force a decently sized delay before going to the "freeze" state
+        // ZZZ:  FIX THIS!
+            g_timeout_add(3000, WaitFreeze, NULL); // calls function after 3 seconds
+
+
+        //////
+        return;
     }
+    gboolean WaitFreeze(gpointer na){ // using this to get the freeze to happen during the wait menu window
+        officialGameState = Talk2ServerGameState(officialGameState);
+
+        // Go to initial game window
+        resetMainDisplay();
+        InitGameScreenWindow(officialGameState, playerLoginInfo.playerNum);
+
+        return FALSE; // run timeout only once
+    }
+
+// Initial game window
+    void defaultButtonClick(GtkWidget *button, gpointer clickData){
+        printf("A button was clicked!\n");
+    }
+    void InitGameScreenWindow(GAMESTATE &gameState, int playerNum){
+        /*   Creating entries   */
+        // Player entries
+            char description[500];    
+            for(unsigned int i=0; i<gameState.players.size(); i++){
+                PLAYER player = gameState.players[i];
+                sprintf(description, "Player %d: %s\nPoints: %d\nBet: %d\nIn round: %s\nEliminated?: %s\n%s\n", i+1, player.name, player.score, player.bet, 
+                    (player.isInHand) ? "yes" : "no", (player.isEliminated) ? "yes" : "no", (i == gameState.dealerPlayer) ? "DEALER" : "");
+                gameWindow.playerIcons[i] = gtk_label_new(description);
+            }
+
+        // Card entries
+            if((unsigned int)playerNum >= gameState.allCards.size()){
+                printf("ERROR:  When trying to display cards for a given player, the player number exceeded the size of the array.  Exiting function...\n");
+                return;
+            }
+            std::string cardStr;
+            Card foundCard;
+            for(int i=0; i<2; i++){
+                foundCard = gameState.allCards[playerNum][i];
+                if(foundCard.getValue() == Anteater){
+                    gameWindow.playerCards[i] = createScaledImage(anteaterRef.c_str(), CARD_W, CARD_H);
+                    continue;
+                }
+                cardStr = mainDeckRef[foundCard.getSuit()][foundCard.getValue()];
+                gameWindow.playerCards[i] = createScaledImage(cardStr.c_str(), CARD_W, CARD_H);
+            }
+
+            if(gameState.allCards.size() < 3){
+                printf("ERROR:  When trying to display community cards, noticed that there are only two piles.  This is not enough.  Exiting function...\n");
+                return;
+            }
+            for(int i=0; i<5; i++){
+                int r = gameState.round;
+                if(  r == Preflop || (r == Flop && i>2) || (r == Turn && i>3)  ){
+                    gameWindow.commCards[i] = createScaledImage(backRef.c_str(), CARD_W, CARD_H);
+                } else{
+                    foundCard = gameState.allCards[gameState.allCards.size()-2][i]; // ex:  player1, player2, player3, _commCards_, restOfCards
+                    if(foundCard.getValue() == Anteater){
+                        gameWindow.commCards[i] = createScaledImage(anteaterRef.c_str(), CARD_W, CARD_H);
+                        continue;
+                    } 
+                    cardStr = mainDeckRef[foundCard.getSuit()][foundCard.getValue()];
+                    gameWindow.commCards[i] = createScaledImage(cardStr.c_str(), CARD_W, CARD_H);
+                }
+            }
+        
+        // Player input entries
+            gameWindow.callButton = gtk_button_new_with_label("Call");
+            gameWindow.raiseButton = gtk_button_new_with_label("Confirm Raise");
+            gameWindow.raiseEntry = gtk_entry_new();
+            gameWindow.foldButton = gtk_button_new_with_label("Fold");
+            gameWindow.InputError = gtk_label_new("Illegal move.  Please try again.");
+            gameWindow.helpMenuButton = gtk_button_new_with_label("Help Menu");
+            gameWindow.ShutdownButton = gtk_button_new_with_label("End game and stop server");
+
+        // Logging
+            gameWindow.logEvents = gtk_text_view_new();
+            gameWindow.logEventsBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(gameWindow.logEvents));
+            gtk_text_view_set_editable(GTK_TEXT_VIEW(gameWindow.logEvents), FALSE);
+            gameWindow.logScrollBox = gtk_scrolled_window_new(NULL, NULL);
+
+        
+        /*  Creating extra boxes; Staging  */ 
+        // Boxes
+            // Main Display -- now done in main function instead
+            gameWindow.MainDisplaySub = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+            gtk_box_pack_start(GTK_BOX(MainDisplay), gameWindow.MainDisplaySub, TRUE, TRUE, 5);
+            
+
+            // Overarching boxes
+            gameWindow.playersAndCardsBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+            gtk_box_pack_start(GTK_BOX(gameWindow.MainDisplaySub), gameWindow.playersAndCardsBox, TRUE, TRUE, 0);
+            gameWindow.movesAndLogBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+            gtk_box_pack_start(GTK_BOX(gameWindow.MainDisplaySub), gameWindow.movesAndLogBox, TRUE, TRUE, 0);
+
+            // Players
+            gameWindow.playerIconsBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+            gtk_box_pack_start(GTK_BOX(gameWindow.playersAndCardsBox), gameWindow.playerIconsBox, FALSE, FALSE, 2);
+            for(unsigned int i=0; i<gameState.players.size(); i++){
+                gtk_box_pack_start(GTK_BOX(gameWindow.playerIconsBox), gameWindow.playerIcons[i], FALSE, TRUE, 0);
+            }
+
+            // CardBox
+            gameWindow.cardsBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+            gtk_box_pack_start(GTK_BOX(gameWindow.playersAndCardsBox), gameWindow.cardsBox, FALSE, TRUE, 2);
+            // CommCards
+            gameWindow.commCardsBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0); // reducing space btw cards
+            gtk_box_pack_start(GTK_BOX(gameWindow.cardsBox), gameWindow.commCardsBox, FALSE, TRUE, 2);
+            for(int i=0; i<5; i++){
+                gtk_box_pack_start(GTK_BOX(gameWindow.commCardsBox), gameWindow.commCards[i], FALSE, TRUE, 0);
+            }
+            // PlayerCards
+            gameWindow.playerCardsBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0); // reducing space btw cards
+            gtk_box_pack_start(GTK_BOX(gameWindow.cardsBox), gameWindow.playerCardsBox, FALSE, TRUE, 2);
+            for(int i=0; i<2; i++){
+                gtk_box_pack_start(GTK_BOX(gameWindow.playerCardsBox), gameWindow.playerCards[i], FALSE, TRUE, 0);
+            }
+
+
+            // Moves
+            gameWindow.playerInputBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+            gtk_box_pack_start(GTK_BOX(gameWindow.movesAndLogBox), gameWindow.playerInputBox, FALSE, TRUE, 2);
+            
+            gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.callButton, FALSE, FALSE, 2);
+            gameWindow.raiseBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+            gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.raiseBox, FALSE, FALSE, 2);
+            gtk_box_pack_start(GTK_BOX(gameWindow.raiseBox), gameWindow.raiseEntry, FALSE, FALSE, 2);
+            gtk_box_pack_start(GTK_BOX(gameWindow.raiseBox), gameWindow.raiseButton, FALSE, FALSE, 2);
+            gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.foldButton, FALSE, FALSE, 2);
+            // gtk_container_add(GTK_CONTAINER(gameWindow.playerInputBox), gameWindow.InputError); -- Don't want to display this unless there is an actual input error
+            gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.helpMenuButton, FALSE, FALSE, 2);
+            gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.ShutdownButton, FALSE, FALSE, 2);
+
+
+            // Logs
+            // gameWindow.logScrollBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+            gtk_box_pack_start(GTK_BOX(gameWindow.movesAndLogBox), gameWindow.logScrollBox, TRUE, TRUE, 2);
+
+            // Moves (and raiseBox)
+            // gameWindow.raiseBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+            
+            
+
+
+        /*   Activating buttons   */
+            g_signal_connect(gameWindow.callButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
+            g_signal_connect(gameWindow.raiseButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
+            g_signal_connect(gameWindow.foldButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
+            g_signal_connect(gameWindow.helpMenuButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
+            g_signal_connect(gameWindow.ShutdownButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
+
+
+        // Wrapup
+        gtk_widget_show_all(Window);
+    }
+    
 
 
 

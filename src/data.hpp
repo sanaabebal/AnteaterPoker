@@ -98,12 +98,13 @@ typedef std::string String;
 
     struct GameState{
         int packageType = game; // for serializing/deserializing structures purposes
-        int numPlayers; // total number of players in the game
-        int round; // holds round number (see Round enum)
-        int dealerPlayer; // represents which player is the dealer for the hand (note that the server does the dealing, not the player)
-        int pot; // amount of money in the pot
-        int callAmount; // the amount of points currently needed to call in a round
-        int playerTurn; // holds which player's turn it is
+        int numPlayers{0}; // total number of players in the game
+        int round{Preflop}; // holds round number (see Round enum)
+        int dealerPlayer{0}; // represents which player is the dealer for the hand (note that the server does the dealing, not the player)
+        int pot{0}; // amount of money in the pot
+        int callAmount{0}; // the amount of points currently needed to call in a round
+        int playerTurn{0}; // holds which player's turn it is
+        int greatest{0}; // holds the greatest bet (ADDED BETA MAY30)
         PILES allCards; // holds all the cards in the hand (including "leftover" cards)
         PLAYERS players; // holds player information
         

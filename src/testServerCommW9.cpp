@@ -19,6 +19,7 @@
 #include "cards.hpp"
 #include "data.hpp"
 #include "DataTransfer.hpp"
+#include "stubFunctionsW9.hpp" // FIX THIS!!!
 
 #define DEFAULT_PORT 10080
 
@@ -32,6 +33,7 @@ const char *Program	/* program name for descriptive diagnostics */
 	= NULL;
 int Shutdown		/* keep running until Shutdown == 1 */
 	= 0;
+int gameStarted = 0; // used to track whether in login stage or gamestate stage
 
 // Adding these globally so they can be modified later
 GtkWidget *Window;
@@ -41,6 +43,7 @@ LOGININFO officialLoginInfo;
 GAMESTATE officialGameState;
 // officialLoginInfo.isHost = 1; moving this to start of main function
 PLAYERS players; // will set size of this later with the host specifications
+PILE refDeck; // reference deck (initialized in main)
 
 
 /*** GUI functions *******************************************************/
@@ -205,6 +208,24 @@ int MakeServerSocket(		/* create a socket on this server */
 } /* end of MakeServerSocket */
 
 
+void MessageAllClients(){
+    ssize_t n;
+    BUF SendBuf;
+    int clientSocket;
+
+    SendBuf = createBuffer(officialGameState);
+
+    for(unsigned int i=0; i<officialGameState.players.size(); i++){
+        clientSocket = officialGameState.players[i].playerSocket;
+
+        n = write(clientSocket, SendBuf.data(), SendBuf.size());
+        if(n < 0){
+            printf("ERROR:  Couldn't write message to player %d (0, 1, 2, etc.)\n", i);
+        }
+    }
+    return;
+}
+
 void ProcessClientRequest(int DataSocketFD){
     BUF RecvBuf(2000); /* message buffer for receiving a message -- think the max for login and game is well below 2000 bytes, but using this just in case */
     ssize_t n = 0;
@@ -222,8 +243,8 @@ void ProcessClientRequest(int DataSocketFD){
 
     if(packageType == login){
         ProcessLoginRequest(DataSocketFD, RecvBuf);
-    } else if(packageType = game){
-        ProcessGameStateRequest(DataSocketFD, RecvBuf);
+    } else if(packageType == game){
+        // ProcessGameStateRequest(DataSocketFD, RecvBuf);
     } else{
         FatalError("Message received was neither logininfo or gamestate.");
     }
@@ -292,10 +313,59 @@ void ProcessLoginRequest(		/* process a LOGININFO request by a client --user wil
             n = write(DataSocketFD, SendBuf.data(), SendBuf.size());     
 } /* end of ProcessRequest */
 
-void ProcessGameStateRequest(int DataSocketFD, BUF RecvBuf){
-    return;
 
+#ifdef IGNORE
+void ProcessGameStateRequest(int DataSocketFD, BUF RecvBuf){
+     ssize_t n = 0;
+        
+        BUF SendBuf; /* message buffer for sending a response */
+        
+        GAMESTATE gameState;
+
+    
+    // Handling processed user input
+        gameState = parsingGameArguments(RecvBuf);
+        SendBuf = createBuffer(officialGameState);
+
+        if(gameState.numPlayers == 0){ // dummy value--first time the user is connecting to the server regarding this
+            int foundAllPlayers = 1;
+            for(unsigned int i=0; i<officialLoginInfo.playersFound.size(); i++){
+                if(officialLoginInfo.playersFound[i] == 0){
+                    foundAllPlayers = 0;
+                    break;
+                }
+            }
+
+            if(foundAllPlayers == 0){ // ignore request for now
+                return;
+            } else{ // all players have logged in -- create initial gamestate and send it to all players
+                printf("ALL PLAYERS HAVE LOGGED IN!  STARTING GAME...\n");
+                // Updating values
+                gameStarted = 1;
+                officialGameState.numPlayers = players.size();
+                officialGameState.players = players;
+
+                // ZZZ:  MAY NEED TO FIX THIS IN LATER VERSIONS BY CALLING A ROUNDS LOOP INSTEAD...
+                #ifndef TESTING
+                    PILE deck = refDeck;
+                    for(int i=0; i<7; i++){
+                        deck = oneShuffle(deck);
+                    }
+                    officialGameState.allCards = deal(deck, officialGameState.numPlayers);
+                    MessageAllClients(); // send all clients copy of the initial, global officialGameState
+
+                #endif
+
+                
+
+            }
+        } 
+        // user sent an actual value--update the official structure, record the player
+            // ZZZ:  Sorry, implementation TBD!
+    
+        return;
 }
+#endif
 
 
 // Updated post-alpha
@@ -363,7 +433,14 @@ void ServerMainLoop(		/* simple server main loop */
                             printf("%s: Dealing with client on FD%d...\n",
                                 Program, i);
                 #endif
+                        
+                
+                // Actual control flow logic
+                    if(!gameStarted){
                         ProcessClientRequest(i);
+                    }
+                    // ZZZ:  FIX THIS!  Want it to probably go to rounds somehow, but I'm not sure how to implement that...next week's problem?
+                        
 
 
                         //close(i); -- Update 5/27, after alpha
@@ -383,6 +460,8 @@ int main(			/* the main function */
 {
     // Doing this to set isHost to be 1 (i.e. first person to log on will be the host)
     officialLoginInfo.isHost = 1;
+    refDeck = initDeck();
+    srand(time(NULL)); // using this for random number generation (needed for shuffling algorithm)
 
     int ServSocketFD;	/* socket file descriptor for service */
     int PortNo;		/* port number */

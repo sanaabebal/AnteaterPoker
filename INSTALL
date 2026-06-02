@@ -1,4 +1,4 @@
-ALPHA VERSION INSTALLATION INSTRUCTIONS
+BETA VERSION INSTALLATION INSTRUCTIONS
 
 1.  System requirements
 The user must satisfy the following conditions to correctly install the software:
@@ -36,7 +36,7 @@ For Poker_Alpha_src.tar.gz:
 
 
 3.  Uninstalling
-Through the command line, the user can uninstall the program by calling make clean (see above),
-then going one directory above the installed directory and calling rmdir -rf PokerDirectoryName,
-with PokerDirectoryName being the name of the directory that was downloaded by the user
+Through the command line, the user can uninstall the program by calling make clean (see above), 
+then going one directory above the installed directory and calling rmdir -rf PokerDirectoryName, 
+with PokerDirectoryName being the name of the directory that was downloaded by the user 
 (the user may have decided to rename the directory, so be sure to check its current name).
