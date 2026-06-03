@@ -1,39 +1,60 @@
 /* clientGUI.hpp */
 
-#ifndef CLIENTGUI
-#define CLIENTGUI
+#pragma once
 
-#include "cards.hpp"
+#include <gtk/gtk.h>
+
 #include "data.hpp"
+#include "loginScreen.hpp"
+#include "hostScreen.hpp"
+#include "playerScreen.hpp"
 
-// NEW/UPDATED FUNCTIONS
-    /* textMenu():  Based on information from the server regarding login stuff, shows a text menu; player inputs then impact the login info; new LOGININFO is returned */
-    LOGININFO textMenu(LOGININFO serverLoginInfo);
+class ClientGUI {
+    public:
+        ClientGUI(int argc, char** argv);
 
-    /* textMenu():  Based on information from the server regarding login stuff, shows a text menu; player inputs then impact the login info; new LOGININFO is returned */
-    LOGININFO guiMenu(LOGININFO serverLoginInfo);
+        int run();
+    
+    private:
+        GtkApplication* app;
+        GtkApplication* window;
+        
+        
+        GtkWidget* stack;
 
-    /* printLogMessage():  Used to notify the player of what is going on the game by keeping track of things in a log; will notify players of bets/folds, who wins the hand, start/end of a round, etc. */
-    void printLogMessage(const char *msg);
-// end new/updated functions
+        GtkWidget* playerCards;
+        GtkWidget* communityCards;
 
-/* displayWaitingScreen():  Displays the waiting screen while waiting for other players to join */
-void displayWaitingScreen(int numPlayers);
+        GtkWidget* callButton;
+        GtkWidget* raiseButton;
+        GtkWidget* foldButton;
 
-/* displayCards():  Displays the player's hole cards and the the community cards*/
-void displayCards(PILES piles);
+        GtkWidget* raiseEntry;
 
-/* displayPot():  Displays the pot */
-void displayPot(int pot);
+        GAMESTATE officialGameState;
+        LOGININFO playerLoginInfo;
 
-/* displayScores():  Displays player scores */
-void displayScores(PLAYERS players);
+        ClientNetworth* network;
 
-/* askAction():  Gets a bet or special bet (call or fold) from player, if applicable, based on the current state of the game and which player they are */
-int askAction(GAMESTATE gameState, int playerNum);
+        static void raiseClicked (
+                GtkWidget* widget,
+                gpointer data
+        );
 
-/* displayAnalysis():  ???*/
-int displayAnalysis(PILES piles, int playerNum);
+        static void foldClicked (
+                GtkWidget* widget,
+                gpointer data
+        );
 
+        void buildGUI();
+        void updateTable();
 
-#endif
+        void clearContainers(
+            GtkWidget* container
+        );
+
+        GtkWidget* createCard (
+            const Card& card,
+            bool visible
+        );
+};
