@@ -1,9 +1,3 @@
-/* clientGUIW9.cpp - BETA */
-
-/* GTK_ClockClient.c: GUI example interactive TCP/IP client for ClockServer
- * Author: Rainer Doemer, 04/22/22 (based on simple ClockClient.c)
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

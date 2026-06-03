@@ -76,6 +76,6 @@ tar: clean all
 
 clean:
 	rm -r src/*.o bin/*
-	rm -rf bin
+	# rm -rf bin
 
 .PHONY: all clean test_server test_client test_gui tar
