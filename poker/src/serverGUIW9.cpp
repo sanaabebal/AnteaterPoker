@@ -344,12 +344,12 @@ void ProcessGameStateRequest(int DataSocketFD, BUF RecvBuf){
                 officialGameState.players = players;
                 printf("OFFICIAL STARTING GAME STATE:  \n");
                 officialGameState.PrintGameState();
+                // Adding this so I can call the startRound() function normally
+                officialGameState.dealerPlayer = officialGameState.numPlayers - 1; // this will make the dealer reset go to player 0, which is what is wanted
 
                 // ZZZ:  MAY NEED TO FIX THIS IN LATER VERSIONS BY CALLING A ROUNDS LOOP INSTEAD...
                 #ifndef TESTING
-                    PILE deck = refDeck;
-                    deck = shuffle(deck);
-                    officialGameState.allCards = deal(deck, officialGameState.numPlayers, officialGameState.dealerPlayer);
+                    officialGameState = startRound(officialGameState);
                     MessageAllClients(); // send all clients copy of the initial, global officialGameState
 
                 #endif

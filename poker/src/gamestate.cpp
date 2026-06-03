@@ -12,6 +12,7 @@
 
 #include "cards.hpp"
 #include "data.hpp"
+#include "gamestate.hpp"
 
 
 // My functions
@@ -118,13 +119,13 @@
         int d = (dealerPlayer == numPlayers-1) ? 0 : dealerPlayer + 1;
         for(int i=0; i<2; i++){ // each player gets two cards
             for(int j=0; j<numPlayers; j++){ // looping through players
-                printf("Player receiving card:  %d\n", d);
-                printf("Card number player receives:  %d\n", i*numPlayers + j);
-                printf("Card is:  %d %d\n", deck[i*numPlayers+j].getValue(), deck[i*numPlayers+j].getSuit());
+                // printf("Player receiving card:  %d\n", d);
+                // printf("Card number player receives:  %d\n", i*numPlayers + j);
+                // printf("Card is:  %d %d\n", deck[i*numPlayers+j].getValue(), deck[i*numPlayers+j].getSuit());
                 cardNum = i*numPlayers + j;
                 answer[d].push_back(deck[cardNum]);
                 //answer[j].push_back(deck[cardNum]); // adds card to player hand
-                d = (d == numPlayers-1) ? 0 : dealerPlayer + 1;
+                d = (d == numPlayers-1) ? 0 : d + 1;
             }
         }
 
@@ -147,5 +148,157 @@
     }
 
 // Sam and David's functions
+
+
+
+GAMESTATE updateGameState(GAMESTATE gameState){
+    
+
+}
+
+
+GAMESTATE preflopUpdate(GAMESTATE gameState){
+    GAMESTATE answer = gameState;
+
+    // Handling the pot
+    int smallBlindPlayer = (answer.dealerPlayer == answer.numPlayers-1) ? 0 : answer.dealerPlayer + 1;
+    int bigBlindPlayer = (smallBlindPlayer == answer.numPlayers-1) ? 0 : smallBlindPlayer + 1;
+    answer.pot += 3;
+    answer.players[smallBlindPlayer].score -= 1;
+    answer.players[bigBlindPlayer].score -= 2;
+
+    // Handling player stats
+    answer.players[smallBlindPlayer].bet = 1;
+    answer.players[bigBlindPlayer].bet = 2;
+    answer.greatest = bigBlindPlayer;
+    answer.callAmount = 2;
+    answer.playerTurn = (bigBlindPlayer == answer.numPlayers-1) ? 0 : bigBlindPlayer + 1;
+
+
+    // Wrapup
+    return answer;
+}
+
+
+GAMESTATE startRound(GAMESTATE gameState){
+    GAMESTATE answer = endRoundChecks(gameState);
+    answer.numPlayers = answer.players.size(); // just in case
+
+    if(answer.numPlayers == 0){
+        printf("Hmmm...there are no players left!\n");
+        return answer;
+    }
+    if(answer.numPlayers == 1){
+        printf("One player is left, and they have won the game!");
+        return answer;
+    }
+
+    answer.pot = 0;
+    answer.callAmount = 0;
+    answer.dealerPlayer = (answer.dealerPlayer == answer.numPlayers-1) ? 0 : answer.dealerPlayer + 1;
+    
+    for(unsigned int i=0; i<answer.players.size(); i++){
+        answer.players[i].bet = 0;
+        answer.players[i].isInHand = 1;
+    }
+
+    
+    // Card distribution
+    PILE deck = initDeck();
+    deck = shuffle(deck);
+    answer.allCards = deal(deck, answer.numPlayers, answer.dealerPlayer);
+
+    // Setting up for preflop
+    answer.round = Preflop;
+    answer = preflopUpdate(answer);
+
+    // Wrapup
+    return answer;
+}
+
+// ZZZ:  HOUSE RULE:  If relevant players do not have enough money to cover the small and big blinds, they are out
+GAMESTATE endRoundChecks(GAMESTATE gameState){ // determines hypothetetical "previous" dealer, if necessary
+    GAMESTATE answer = gameState;
+    answer.numPlayers = answer.players.size(); // just in case
+
+    if(answer.players.size() <= 0){
+        printf("ERROR:  There should be at least one player left in the game!  Can't eliminate players if there are none...\n");
+        return answer;
+    }
+    if(answer.players.size() == 1){
+        printf("Uh...there's already only one player left.  They should have won by now.\n");
+        return answer;
+    }
+
+    for(int i=answer.players.size()-1; i >= 0; i--){ // have to loop backwards to avoid removal issues
+        if(answer.players[i].score <= 0 ){ // player doesn't have enough points at end of round and should be eliminated
+            if(i == answer.dealerPlayer){
+                answer.dealerPlayer = (answer.dealerPlayer == 0) ? answer.numPlayers-2 : answer.dealerPlayer - 1; // "previous" dealer player
+            }
+            if(i < answer.dealerPlayer){ // player before dealer was eliminated
+                answer.dealerPlayer--;
+            }
+            answer.players[i].isEliminated = 1;
+            answer.players.erase(answer.players.begin() + i);
+            answer.numPlayers--;
+        }
+    }
+    if(answer.numPlayers == 1){
+        printf("Only one player has points left, so they win!\n");
+        return answer;
+    }
+
+    
+    // Removing players who can't cover their blinds
+    int nextDealer = (answer.dealerPlayer == answer.numPlayers-1) ? 0 : answer.dealerPlayer + 1;
+    int smallBlindPlayer = (answer.dealerPlayer == answer.numPlayers-1) ? 0 : answer.dealerPlayer + 1;
+    int bigBlindPlayer = (smallBlindPlayer == answer.numPlayers-1) ? 0 : smallBlindPlayer + 1;
+
+    if(answer.numPlayers == 2){
+        if(answer.players[0].score < 2){
+            printf("Player 1 is eliminated!  Player 2 wins!\n");
+            answer.players[0].isEliminated = 1;
+            answer.players.erase(answer.players.begin() + 0);
+            answer.numPlayers--;
+        } else if(answer.players[1].score < 2){
+            printf("Player 2 is eliminated!  Player 1 wins!\n");
+            answer.players[1].isEliminated = 1;
+            answer.players.erase(answer.players.begin() + 1);
+            answer.numPlayers--;
+        }
+    }
+    while(answer.numPlayers > 2 && answer.players[bigBlindPlayer].score < 2){
+        printf("Player %d does not have enough money to cover the big blind and has been eliminated.\n", bigBlindPlayer);
+        answer.players[bigBlindPlayer].isEliminated = 1;
+        answer.players.erase(answer.players.begin() + bigBlindPlayer);
+        answer.numPlayers--;
+        if(bigBlindPlayer < answer.dealerPlayer){
+            answer.dealerPlayer--;
+        }
+        bigBlindPlayer = (bigBlindPlayer == answer.numPlayers-1) ? 0 : bigBlindPlayer + 1;
+    }
+    if(answer.numPlayers == 2){
+        if(answer.players[0].score < 2){
+            printf("Player 1 is eliminated!  Player 2 wins!\n");
+            answer.players[0].isEliminated = 1;
+            answer.players.erase(answer.players.begin() + 0);
+            answer.numPlayers--;
+        } else if(answer.players[1].score < 2){
+            printf("Player 2 is eliminated!  Player 1 wins!\n");
+            answer.players[1].isEliminated = 1;
+            answer.players.erase(answer.players.begin() + 1);
+            answer.numPlayers--;
+        }
+    }
+    
+
+    // Updating internal player numbers
+    for(unsigned int i=0; i<answer.players.size(); i++){
+        answer.players[i].playerNum = i;
+    }
+
+    // Wrapup
+    return answer;
+}
 
 
