@@ -214,6 +214,8 @@ void MessageAllClients(){
     int clientSocket;
 
     SendBuf = createBuffer(officialGameState);
+    printf("MESSAGING ALL CLIENTS:  \n");
+    officialGameState.PrintGameState();
 
     for(unsigned int i=0; i<officialGameState.players.size(); i++){
         clientSocket = officialGameState.players[i].playerSocket;
@@ -360,6 +362,12 @@ void ProcessGameStateRequest(int DataSocketFD, BUF RecvBuf){
         } 
         // user sent an actual value--update the official structure, record the player
             // ZZZ:  Sorry, implementation TBD!
+        else{
+            officialGameState = updateGameState(gameState);
+            printf("NEW GAME STATE:  \n");
+            officialGameState.PrintGameState();
+            MessageAllClients();
+        }
     
         return;
 }
@@ -437,7 +445,9 @@ void ServerMainLoop(		/* simple server main loop */
                         ProcessClientRequest(i);
                     }
                     // ZZZ:  FIX THIS!  Want it to probably go to rounds somehow, but I'm not sure how to implement that...next week's problem?
-                        
+                    else{
+                        ProcessClientRequest(i);
+                    }
 
 
                         //close(i); -- Update 5/27, after alpha

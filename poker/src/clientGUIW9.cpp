@@ -134,6 +134,46 @@ GAMESTATE Talk2ServerGameState(GAMESTATE gameState){
 
 }
 
+GAMESTATE ServerGameStateRead(){
+    int n;
+    GAMESTATE gameState;
+
+    /* Creating buffer, sending it to server */
+    BUF RecvBuf(2000); /* message buffer for receiving a message -- think the max for login and game is well below 2000 bytes, but using this just in case */
+    BUF SendBuf; /* message buffer for sending a response */
+    
+    /* Getting response from server and closing the socket */
+    n = read(SocketFD, RecvBuf.data(), 2000);
+    if (n < 0) {   
+        FatalError("reading from socket failed");
+    }
+    RecvBuf.resize(n);
+
+    // Wrapup:  Getting new structure and returning it
+
+    gameState = parsingGameArguments(RecvBuf);
+    return gameState;
+}
+
+void ServerGameStateWrite(GAMESTATE gameState){
+    int n;
+
+    /* Creating buffer, sending it to server */
+    BUF RecvBuf(2000); /* message buffer for receiving a message -- think the max for login and game is well below 2000 bytes, but using this just in case */
+    BUF SendBuf; /* message buffer for sending a response */
+
+    SendBuf = createBuffer(gameState);
+    //printf("Dummy game state:  \n");
+    //officialGameState.PrintGameState();
+
+    n = write(SocketFD, SendBuf.data(), SendBuf.size());
+    if (n < 0){   
+        FatalError("writing to socket failed");
+    }
+    
+
+}
+
 
 /******** GUI Functions **************************************************/
 GtkWidget *Window;
@@ -636,6 +676,11 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
         return;
     }
     gboolean WaitFreeze(gpointer na){ // using this to get the freeze to happen during the wait menu window
+        /*if(officialGameState.playerTurn == playerLoginInfo.playerNum){
+            ServerGameStateWrite(officialGameState);
+        }
+
+        officialGameState = ServerGameStateRead(officialGameState);*/
         officialGameState = Talk2ServerGameState(officialGameState);
 
         // Go to initial game window
@@ -646,6 +691,18 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
     }
 
 // Initial game window
+    gboolean WaitTurnFreeze(gpointer na){ // using this to get the freeze to happen during the wait menu window
+        officialGameState = ServerGameStateRead();
+
+        UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 0);
+
+        // Wrapup:  Determine whether to run the loop again
+        if(officialGameState.playerTurn == playerLoginInfo.playerNum){
+            return FALSE; // stop running
+        }
+        return TRUE; // keep running (still not your turn)
+    }
+
     void defaultButtonClick(GtkWidget *button, gpointer clickData){
         printf("A button was clicked!\n");
     }
@@ -653,7 +710,7 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
         int proposedCall = officialGameState.callAmount - officialGameState.players[playerLoginInfo.playerNum].bet;
         printf("Proposed call amount:  %d\nPlayer's current score:  %d\n", proposedCall, officialGameState.players[playerLoginInfo.playerNum].score);
         if(proposedCall >= officialGameState.players[playerLoginInfo.playerNum].score || proposedCall == 0){
-            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  call.  Call must be used to match the current bet and cannot be used for all in.  Please try again.");
+            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  call.  \nCall must be used to match the current bet and cannot be used for all in.  \nPlease try again.");
             return;
         }
 
@@ -662,9 +719,11 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
         officialGameState.players[playerLoginInfo.playerNum].score -= proposedCall;
         officialGameState.pot += proposedCall;
 
+        // Wrapup
         gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "");
         UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
-        
+        ServerGameStateWrite(officialGameState);
+        g_timeout_add(500, WaitTurnFreeze, NULL);
     }
     void raiseClick(GtkWidget *button, gpointer clickData){
         const char *raise; 
@@ -673,7 +732,7 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
         int proposedRaise = officialGameState.callAmount + raiseAmount - officialGameState.players[playerLoginInfo.playerNum].bet; // full bet minus what has already been bet
 
         if(raiseAmount <= 0 || proposedRaise >= officialGameState.players[playerLoginInfo.playerNum].score){
-            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  raise.  Raise must be used to match the current bet + some extra (extra specified by user), and it cannot be used for all in.  Please try again.");
+            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  raise.  \nRaise must be used to match the current bet + some extra (extra specified by user), \nand it cannot be used for all in.  Please try again.");
             return;
         }
 
@@ -684,15 +743,36 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
         officialGameState.pot += proposedRaise;
         officialGameState.callAmount += raiseAmount;
 
+        // Wrapup
         gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "");
         UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
+        ServerGameStateWrite(officialGameState);
+        g_timeout_add(750, WaitTurnFreeze, NULL);
     }
     void foldClick(GtkWidget *button, gpointer clickData){
         // Valid fold
         officialGameState.players[playerLoginInfo.playerNum].isInHand = 0;
 
+        // Wrapup
         gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "");
         UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
+        ServerGameStateWrite(officialGameState);
+        g_timeout_add(750, WaitTurnFreeze, NULL);
+    }
+    void checkClick(GtkWidget *button, gpointer clickData){
+        // Player can check if and only if the player has in total bet the same amount as the call amount
+        if(officialGameState.players[playerLoginInfo.playerNum].bet != officialGameState.callAmount){
+            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  check.  \nPlayers can only check when their total bet matches the current call amount.  \nPlease try again.");
+            return;
+        }
+
+        // Valid check
+
+        // Wrapup
+        gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "");
+        UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
+        ServerGameStateWrite(officialGameState);
+        g_timeout_add(750, WaitTurnFreeze, NULL);
     }
 
     void InitGameScreenWindow(GAMESTATE &gameState, int playerNum){
@@ -701,7 +781,9 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
             char description[500];    
             for(unsigned int i=0; i<gameState.players.size(); i++){
                 PLAYER player = gameState.players[i];
-                officialPlayerSocket = player.playerSocket; // ID'ing information used at the beginning of each round to determine if player number has changed
+                if(i == playerLoginInfo.playerNum){
+                    officialPlayerSocket = player.playerSocket; // ID'ing information used at the beginning of each round to determine if player number has changed
+                }
                 sprintf(description, "Player %d: %s\nPoints: %d\nBet: %d\nIn round: %s\nEliminated?: %s\n%s\n", i+1, player.name, player.score, player.bet, 
                     (player.isInHand) ? "yes" : "no", (player.isEliminated) ? "yes" : "no", (i == gameState.dealerPlayer) ? "DEALER" : "");
                 gameWindow.playerIcons[i] = gtk_label_new(description);
@@ -747,7 +829,7 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
             char miscMsg[500];
             sprintf(miscMsg, "Pot:  %d points", gameState.pot);
             gameWindow.pot = gtk_label_new(miscMsg);
-            sprintf(miscMsg, "Call amount:  %d points", gameState.callAmount);
+            sprintf(miscMsg, "Total Call amount:  %d points", gameState.callAmount);
             gameWindow.callAmount = gtk_label_new(miscMsg);
             sprintf(miscMsg, "You are:  Player %d", playerLoginInfo.playerNum + 1);
             gameWindow.playerNumber = gtk_label_new(miscMsg);
@@ -820,7 +902,7 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
 
 
             // Moves
-            if(playerLoginInfo.playerType != Computer && gameState.playerTurn == playerLoginInfo.playerNum){
+            if(playerLoginInfo.playerType != Computer){
                 gameWindow.playerInputBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
                 gtk_box_pack_start(GTK_BOX(gameWindow.movesAndLogBox), gameWindow.playerInputBox, FALSE, TRUE, 2);
                 
@@ -836,13 +918,14 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
                 gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.helpMenuButton, FALSE, FALSE, 2);
                 gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.ShutdownButton, FALSE, FALSE, 2);
             }
+
             
-
-
+        
         /*   Activating buttons   */
             g_signal_connect(gameWindow.callButton, "clicked", G_CALLBACK(callClick), NULL);
             g_signal_connect(gameWindow.raiseButton, "clicked", G_CALLBACK(raiseClick), NULL);
             g_signal_connect(gameWindow.foldButton, "clicked", G_CALLBACK(foldClick), NULL);
+            g_signal_connect(gameWindow.checkButton, "clicked", G_CALLBACK(checkClick), NULL);
             g_signal_connect(gameWindow.helpMenuButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
             g_signal_connect(gameWindow.ShutdownButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
 
@@ -853,6 +936,21 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
         printCard(officialGameState.allCards[playerLoginInfo.playerNum][1]);
         printf("\n");
         gtk_widget_show_all(Window);
+
+        // Hiding items if they are not supposed to be visible yet (i.e. not player's turn at start)
+            if(gameState.playerTurn != playerLoginInfo.playerNum){
+                gtk_widget_hide(gameWindow.callButton);
+                gtk_widget_hide(gameWindow.raiseButton);
+                gtk_widget_hide(gameWindow.raiseEntry);
+                gtk_widget_hide(gameWindow.foldButton);
+                gtk_widget_hide(gameWindow.checkButton);
+                gtk_widget_hide(gameWindow.ShutdownButton);
+            }
+
+        if(officialGameState.playerTurn != playerLoginInfo.playerNum){ // not player's turn--start waiting
+            g_timeout_add(500, WaitTurnFreeze, NULL);
+        }
+        
     }
 
     void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyNotTurn){
@@ -880,7 +978,7 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
             char description[500];    
             for(unsigned int i=0; i<gameState.players.size(); i++){
                 PLAYER player = gameState.players[i];
-                officialPlayerSocket = player.playerSocket; // ID'ing information used at the beginning of each round to determine if player number has changed
+                // asdf 
                 sprintf(description, "Player %d: %s\nPoints: %d\nBet: %d\nIn round: %s\nEliminated?: %s\n%s\n", i+1, player.name, player.score, player.bet, 
                     (player.isInHand) ? "yes" : "no", (player.isEliminated) ? "yes" : "no", (i == gameState.dealerPlayer) ? "DEALER" : "");
                 gtk_label_set_text(GTK_LABEL(gameWindow.playerIcons[i]), description);
@@ -936,7 +1034,7 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
             char miscMsg[500];
             sprintf(miscMsg, "Pot:  %d points", gameState.pot);
             gtk_label_set_text(GTK_LABEL(gameWindow.pot), miscMsg);
-            sprintf(miscMsg, "Call amount:  %d points", gameState.callAmount);
+            sprintf(miscMsg, "Total Call amount:  %d points", gameState.callAmount);
             gtk_label_set_text(GTK_LABEL(gameWindow.callAmount), miscMsg);
             sprintf(miscMsg, "You are:  Player %d", playerLoginInfo.playerNum + 1);
             gtk_label_set_text(GTK_LABEL(gameWindow.playerNumber), miscMsg);
@@ -962,6 +1060,8 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
             gtk_widget_show(gameWindow.ShutdownButton);
         }
 
+        // Wrapup
+        // g_timeout_add(500, WaitTurnFreeze, NULL);
 
     }
     

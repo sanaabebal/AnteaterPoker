@@ -352,6 +352,9 @@ GAMESTATE flopUpdate(GAMESTATE gameState){
         answer.players[i].bet = 0;
     }
     answer.callAmount = 0;
+
+    // Wrapup
+    return answer;
 }
 
 GAMESTATE turnUpdate(GAMESTATE gameState){
@@ -362,6 +365,9 @@ GAMESTATE turnUpdate(GAMESTATE gameState){
         answer.players[i].bet = 0;
     }
     answer.callAmount = 0;
+
+    // Wrapup
+    return answer;
 }
 
 GAMESTATE riverUpdate(GAMESTATE gameState){
@@ -372,6 +378,9 @@ GAMESTATE riverUpdate(GAMESTATE gameState){
         answer.players[i].bet = 0;
     }
     answer.callAmount = 0;
+
+    // Wrapup
+    return answer;
 }
 
 GAMESTATE showdownUpdate(GAMESTATE gameState){
