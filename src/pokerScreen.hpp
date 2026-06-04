@@ -1,7 +1,6 @@
 // pokerScreen.hpp
 
 #pragma once
-#pragma once
 #include <gtk/gtk.h>
 #include <functional>
 #include <string>
@@ -25,14 +24,56 @@ struct Card {
 
 };
 
-class gameScreen {
+class pokerScreen {
     public:
-        gameScreen();
-        ~gameScreen();
+        pokerScreen();
+        ~pokerScreen();
 
         GtkWidget* getWidget();
 
-        void 
+        void updateGameState( const vector<PlayerInfo>& players,
+                              const vector<Card>& communityCards,
+                              const vector<Card>& holeCards,
+                              int pot,
+                              int currentBet,
+                              int currentPlayerStack
+                            );
+        
+        void setActions(bool enable);
+
+        function<void()> onFold;
+        function<void()> onCheck;
+        function<void(int)> onBet;
 
     private:
+
+        GtkWidget *container;
+        GtkWidget *potLabel;
+        GtkWidget *foldButton;
+        GtkWidget *checkButton;
+        GtkWidget *betButton;
+        GtkWidget *betSpinButton;
+        GtkWidget *tableDrawingArea;
+
+        vector<PlayerInfo> cachedPlayers;
+        vector<Card> cachedCommunity;
+        vector<Card> cachedHole;
+
+        int cachedPot = 0;
+        int cachedBet = 50;
+        int localStack = 0;
+
+        void buildUI();
+        void applyStyles();
+
+        static gboolean onDraw(GtkWidget* widget, cairo_t* cr, gpointer data);
+        void drawTable(cairo_t* cr, int w, int h);
+        void drawCard(cairo_t* cr, double x, double y, double cardW,
+                      double cardH, const Card& card);
+        void drawPlayer(cairo_t* cr, int w, int h, 
+                        const PlayerInfo& p, int seatIndex, int numSeats);
+
+        static void onFoldClicked(GtkButton*, gpointer);
+        static void onCheckClicked(GtkButton*, gpointer);
+        static void onBetClicked(GtkButton*, gpointer);
 }

@@ -2,18 +2,24 @@
 #pragma once
 #include <gtk/gtk.h>
 #include <functional>
+#include <vector>
+#include <string>
 
 using namespace std;
 
-class JoinScreen {
+struct RegisteredPlayer {
+    string name;
+    int slot;
+};
+
+class joinScreen {
     public:
         joinScreen();
-        ~joinScreen()
+        ~joinScreen();
 
         GtkWidget* getWidget();
 
         void playerList(const vector<RegisteredPlayer>& players,
-                        const vector<int>& slots,
                         int maxPlayers);
 
         void openSlots(const vector<int>& slots);
@@ -27,8 +33,8 @@ class JoinScreen {
         GtkWidget *container;
         GtkWidget *userEntry;
         GtkWidget *pwdEntry;
-        GtkWidget *slot;
-        GtkWidget *playerList;
+        GtkWidget *slotCombo;
+        GtkWidget *listBox;
         GtkWidget *playerCountLabel;
         GtkWidget *confirmButton;
         GtkWidget *lobbyButton;
@@ -36,8 +42,8 @@ class JoinScreen {
         void buildUI();
         void applyStyles();
 
-        static void onConfirmedJoin(GtkButton*, gpointer);
-        static void lobbyClicked(GtkButton*, gpointer);
+        static void onConfirmedJoinClicked(GtkButton* button, gpointer inputData);
+        static void lobbyClicked(GtkButton* button, gpointer inputData);
 
 
-}
+};

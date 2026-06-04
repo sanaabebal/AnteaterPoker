@@ -6,10 +6,10 @@
 using namespace std;
 
 static const char* loginCSS = R"CSS(
-.mm-root {
+.ls-root {
     background-color: #2b4c54;
 }
-.mm-title {
+.ls-title {
     color: #d4b96a;
     font-family: "Georgia", serif;
     font-size: 32px;
@@ -17,7 +17,7 @@ static const char* loginCSS = R"CSS(
     letter-spacing: 4px;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
 }
-.mm-button {
+.ls-button {
     background-color: #e8d9a0;
     color: #2c1f0e;
     font-family: "Georgia", serif;
@@ -27,11 +27,11 @@ static const char* loginCSS = R"CSS(
     padding: 8px 40px;
     min-width: 220px;
 }
-.mm-button:hover {
+.ls-button:hover {
     background-color: #f0e6b8;
     border-color: #c0a050;
 }
-.mm-button:active {
+.ls-button:active {
     background-color: #c8b870;
 }
 )CSS";
@@ -53,7 +53,7 @@ void loginScreen::buildUI() {
 
     // basic box area
     box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
-    gtk_widget_set_name(box, "mm-root");
+    gtk_widget_set_name(box, "ls-root");
     gtk_widget_set_halign(box, GTK_ALIGN_FILL);
     gtk_widget_set_valign(box, GTK_ALIGN_FILL);
     gtk_widget_set_vexpand(box, TRUE);
@@ -65,7 +65,7 @@ void loginScreen::buildUI() {
     gtk_box_pack_start(GTK_BOX(box), top, TRUE, TRUE, 0);
 
     titleLabel = gtk_label_new("ANTEATER POKER");
-    gtk_widget_set_name(titleLabel, "mm-title");
+    gtk_widget_set_name(titleLabel, "ls-title");
     gtk_box_pack_start(GTK_BOX(box), titleLabel, FALSE, FALSE, 0);
 
     GtkWidget *spacing = gtk_box_new(GTK_ORIENTATION_VERTICAL,0);
@@ -73,13 +73,13 @@ void loginScreen::buildUI() {
     gtk_box_pack_start(GTK_BOX(box), spacing, FALSE, FALSE, 0);
 
     hostButton = gtk_button_new_with_label("Create a Game (Host)");
-    gtk_widget_set_name(hostButton, "mm-button");
+    gtk_widget_set_name(hostButton, "ls-button");
     gtk_widget_set_halign(hostButton, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(box), hostButton, FALSE, FALSE, 0);
     g_signal_connect(hostButton, "clicked", G_CALLBACK(onHostClicked), this);
 
     playerButton = gtk_button_new_with_label("Join a Game");
-    gtk_widget_set_name(playerButton, "mm-button");
+    gtk_widget_set_name(playerButton, "ls-button");
     gtk_widget_set_halign(playerButton, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(box), playerButton, FALSE, FALSE, 0);
     g_signal_connect(playerButton, "clicked", G_CALLBACK(onPlayerClicked), this);
@@ -104,16 +104,16 @@ void loginScreen::applyStyles() {
     GtkStyleContext *context;
 
     context = gtk_widget_get_style_context(box);
-    gtk_style_context_add_class(context, "mm-root");
+    gtk_style_context_add_class(context, "ls-root");
 
     context = gtk_widget_get_style_context(titleLabel);
-    gtk_style_context_add_class(context, "mm-title");
+    gtk_style_context_add_class(context, "ls-title");
 
     context = gtk_widget_get_style_context(hostButton);
-    gtk_style_context_add_class(context, "mm-button");
+    gtk_style_context_add_class(context, "ls-button");
 
     context = gtk_widget_get_style_context(playerButton);
-    gtk_style_context_add_class(context, "mm-button");
+    gtk_style_context_add_class(context, "ls-button");
 }
 
 void loginScreen::onHostClicked(GtkButton* , gpointer inputData){
@@ -137,7 +137,7 @@ int main(int argc, char* argv[]) {
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     
     gtk_window_set_title(GTK_WINDOW(window), "Tester");
-    gtk_window_set_default_size(GTK_WINDOW(window), 400, 500);
+    gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
     
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
