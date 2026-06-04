@@ -3,7 +3,6 @@
 /* !!! MEANS I NEED YOU GUYS TO DO/FINISH !!! */
 
 /* !!! needs handHierarchy in scoreCalc.cpp to be completed !!! */
-/* !!! also need a All-in option*/
 /* I also want to add a bluffing state  
    Basically once the bot bluffs, it commits and keeps up the bluff 
    unless things other players scare it out (ex: keep raising) 
@@ -66,7 +65,7 @@ double calculateOdds(GAMESTATE gameState, int playerNum) {
         // compare to all opponents
         for (int j = 0; j < temp.numPlayers; j++) {
             if (j == playerNum) continue;
-            if (temp.players[sim].isInHand == 0) continue;
+            if (temp.players[j].isInHand == 0) continue;  //old was [sim]
 
             int oppScore = handHierarchy(temp.allCards, j);
 
@@ -78,12 +77,12 @@ double calculateOdds(GAMESTATE gameState, int playerNum) {
                 tied = true;
             }
         }
-        // update results
+        // update sim results
         if (!lost && !tied) wins++;
         else if (!lost && tied) ties++;
     }
     // return probability
-    return (wins + ties * 0.5) / simulations;
+    return (wins + ties * 0.5) / (double)simulations;
 }
 
 // draws a random card in deck
@@ -101,32 +100,51 @@ int decideAction(GAMESTATE gameState, int playerNum) {
     int rp = rand() % 100;
     int canRaise = validRaise(gameState, playerNum);
     int canCall = validCall(gameState, playerNum);
+    int Bluffing = bluffing(gameState, playerNum, wr);  //calling bluffing function
+    int points = gameState.players[playerNum].score;
+
+    //all in were if called amount is greater than the points bot has, it can fold or go all in
+    if(gameState.callAmount >= points){
+	    if(wr > 0.35 || Bluffing){
+		    return AllIn;
+	    }
+	    return Fold;
+    }
+    //where bluffing happens, if bot can raise then raise, if not see if checking is free as its not worth calling when bluffing
+    if(Bluffing){
+	    if(canRaise)
+		    return Raise;
+	    if(validCheck(gameState, playerNum))
+		    return Check;
+	    else
+		    return Fold;
+    }
 
     // criteria if check available 
     if (validCheck(gameState, playerNum)) {
-        if (gameState == Preflop) {
+        if (gameState.stage == Preflop) {
             if (wr > 0.7 && canRaise) return Raise;
             else {
                 if (rp < 5 && canRaise) return Raise;
                 else return Check;
             }
         }
-        if (gameState == Flop) {
+        if (gameState.stage == Flop) {
             if (wr > 0.75 && canRaise) return Raise;
             else {
                 if (rp < 15 && canRaise) return Raise;
                 else return Check;
             }
         }
-        if (gameState == Turn) {
+        if (gameState.stage == Turn) {
             if (wr > 0.75 && canRaise) return Raise;
             else {
                 if (rp < 10 && canRaise) return Raise;
                 else return Check;
             }
         }
-        if (gameState == River) {
-            if (wr > 75 && canRaise) return Raise;
+        if (gameState.stage == River) {
+            if (wr > 0.75 && canRaise) return Raise;
             else {
                 if (rp < 5 && canRaise) return Raise;
                 else return Check;
@@ -134,7 +152,7 @@ int decideAction(GAMESTATE gameState, int playerNum) {
         }
     }
     // criteria if check is not available
-    if (gameState == Preflop) {
+    if (gameState.stage == Preflop) {
         if (wr > 0.75 && canRaise) return Raise;
         else if (wr > 0.4 && canCall) return Call;
         else {
@@ -143,7 +161,7 @@ int decideAction(GAMESTATE gameState, int playerNum) {
             else return Fold;
         }
     }
-    if (gameState == Flop) {
+    if (gameState.stage == Flop) {
         if (wr > 0.7 && canRaise) return Raise;
         else if (wr > 0.35 && canCall) return Call;
         else {
@@ -152,7 +170,7 @@ int decideAction(GAMESTATE gameState, int playerNum) {
             else return Fold;
         }
     }
-    if (gameState == Turn) {
+    if (gameState.stage == Turn) {
         if (wr > 0.65 && canRaise) return Raise;
         else if (wr > 0.3 && canCall) return Call;
         else {
@@ -161,7 +179,7 @@ int decideAction(GAMESTATE gameState, int playerNum) {
             else return Fold;
         }
     }
-    if (gameState == River) {
+    if (gameState.stage == River) {
         if (wr > 0.6 && canRaise) return Raise;
         else if (wr > 0.25 && canCall) return Call;
         else {
@@ -171,22 +189,61 @@ int decideAction(GAMESTATE gameState, int playerNum) {
         }
     }
     // if no above options chosen, player must be big/small blind
-    return 0;
+    return Check;  //changed from 0 to check, change back if it doesnt work!!
 }
 
 
 /* Determines the amount of points to raise by */
-int getRaiseAmount(GAMESTATE gameState, int playerNum, double wr) {
+int getRaiseAmount(GAMESTATE gameState, int playerNum, double wr, int isBluff) {
     int points = gameState.players[playerNum].score;
     int raiseAmount;
 
-    if (wr >= 0.95) raiseAmount = points; // all in
+    if(isBluff) raiseAmount = points/4;
+    else if (wr >= 0.95) raiseAmount = points; // all in
     else if (wr >= 0.85) raiseAmount = points/2;
     else if (wr >= 0.75) raiseAmount = points/4;
     else raiseAmount = gameState.callAmount;
 
-    // if not enough points for above criteria, go all in
+    // checks to make sure bot does not try to raise more than what it has
     if (raiseAmount > points) raiseAmount = points;
 
     return raiseAmount;
 }
+
+/*start of bluffing function*/
+int bluffing(GAMESTATE gameState, int playerNum, double wr){
+
+	int rp = rand() %100;
+	int activeplayers = 0;
+	int aggressive = 0;
+	
+	//checks how many players are active
+	for(int i = 0; i < gameState.numPlayers; i++){
+		if(gameState.players[i].isInHand)
+			activeplayers++;
+	}
+	//will not bluff with many players on the table
+	if(activeplayers > 3)
+		return 0;
+	//for when it's a 1v1
+	aggressive = (activeplayers == 2) ? 5 : 0;
+
+	//bluff for when the bot has a garbage hand
+	if(wr < 0.12){
+		if(gameState.stage == Flop && rp < 10 + aggressive)
+			return 1;
+		if(gameState.stage == Turn && rp < 5 + aggressive)
+			return 1;
+		if(gameState.stage == River && rp < 3 + aggressive)
+			return 1;
+	}
+	//bluff for when hand is better
+	else if(wr >= 0.12 && wr < 0.35){
+		if(gameState.stage == Flop && rp < 25 + aggressive)
+			return 1;
+		if(gameState.stage == Turn && rp < 15 + aggressive)
+			return 1;
+	}
+	return 0;
+}
+
