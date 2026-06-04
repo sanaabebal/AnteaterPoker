@@ -7,7 +7,7 @@ using namespace std;
 
 static const char* loginCSS = R"CSS(
 .mm-root {
-    background-color: #1b5c5a;
+    background-color: #2b4c54;
 }
 .mm-title {
     color: #d4b96a;
