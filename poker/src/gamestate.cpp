@@ -171,7 +171,7 @@ GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify 
         for(unsigned int i=0; i<answer.players.size(); i++){
             if(answer.players[i].isInHand){
                 answer.players[i].score += answer.pot; // player wins the pot
-                answer = endRoundChecks(answer);
+                // answer = endRoundChecks(answer); // handled in startRound()
                 answer = startRound(answer);
                 return answer;
             }
@@ -186,11 +186,12 @@ GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify 
     
 
     // Case 1:  Going to the next round
-    if(answer.playerTurn = answer.greatest){ // gone through a full loop - go to next round
+    // ZZZ:  FIX THIS!  THIS DOES NOT WORK FOR CHECKING IN THE PREFLOP ROUND
+    if(answer.playerTurn == answer.greatest){ // gone through a full loop - go to next round
         if(answer.round == Preflop){ answer = flopUpdate(answer); }
         else if(answer.round == Flop){ answer = turnUpdate(answer); }
         else if(answer.round == Turn){ answer = riverUpdate(answer); }
-        else if(answer.round == River){ answer = showdownUpdate(answer); answer = endRoundChecks(answer); answer = startRound(answer);}
+        else if(answer.round == River){ answer = showdownUpdate(answer); answer = startRound(answer);}
         return answer;
     }
 
@@ -200,7 +201,7 @@ GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify 
 
 
 
-GAMESTATE startRound(GAMESTATE gameState){
+GAMESTATE startRound(GAMESTATE gameState){ // NOTE:  startRound() calls endRoundChecks() at the beginning -- endRoundChecks() should NOT be called directly except through this function
     GAMESTATE answer = endRoundChecks(gameState);
     answer.numPlayers = answer.players.size(); // just in case
 
@@ -339,26 +340,32 @@ GAMESTATE preflopUpdate(GAMESTATE gameState){
     answer.callAmount = 2;
     answer.playerTurn = (bigBlindPlayer == answer.numPlayers-1) ? 0 : bigBlindPlayer + 1;
 
+    // Handling round
+    answer.round = Preflop;
+
 
     // Wrapup
     return answer;
 }
 
 GAMESTATE flopUpdate(GAMESTATE gameState){
-    GAMESTATE answer;
+    GAMESTATE answer = gameState;
 
     // Handling player stats
     for(unsigned int i=0; i<answer.players.size(); i++){
         answer.players[i].bet = 0;
     }
     answer.callAmount = 0;
+
+    // Handling round
+    answer.round = Flop;
 
     // Wrapup
     return answer;
 }
 
 GAMESTATE turnUpdate(GAMESTATE gameState){
-    GAMESTATE answer;
+    GAMESTATE answer = gameState;
 
     // Handling player stats
     for(unsigned int i=0; i<answer.players.size(); i++){
@@ -366,12 +373,15 @@ GAMESTATE turnUpdate(GAMESTATE gameState){
     }
     answer.callAmount = 0;
 
+    // Handling round
+    answer.round = Turn;
+
     // Wrapup
     return answer;
 }
 
 GAMESTATE riverUpdate(GAMESTATE gameState){
-    GAMESTATE answer;
+    GAMESTATE answer = gameState;
 
     // Handling player stats
     for(unsigned int i=0; i<answer.players.size(); i++){

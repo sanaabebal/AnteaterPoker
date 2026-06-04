@@ -364,8 +364,8 @@ void ProcessGameStateRequest(int DataSocketFD, BUF RecvBuf){
             // ZZZ:  Sorry, implementation TBD!
         else{
             officialGameState = updateGameState(gameState);
-            printf("NEW GAME STATE:  \n");
-            officialGameState.PrintGameState();
+            // printf("NEW GAME STATE:  \n");
+            // officialGameState.PrintGameState();
             MessageAllClients();
         }
     
