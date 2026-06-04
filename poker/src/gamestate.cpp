@@ -153,8 +153,37 @@
 
 GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify pot, call amount, player.isInHand, player.bet, player.score, and player.greatest; they do not modify the round number or player turn
     GAMESTATE answer = recvGameState;
-    // Updating player turn
-    answer.playerTurn = (answer.playerTurn == answer.numPlayers - 1) ? 0 : answer.playerTurn+1;
+    answer.numPlayers = answer.players.size();
+
+    // Checking there is more than one player left in the round
+    int numLeft = 0;
+    for(unsigned int i=0; i<answer.players.size(); i++){
+        if(answer.players[i].isInHand){
+            numLeft++;
+        }
+    }
+    if(numLeft == 0){
+        printf("ERROR:  There are no players left in the round.\n");
+        return answer;
+    }
+    if(numLeft == 1){ // one player left in the round -- give them the pot points, do end-round cleanup, and start the next round
+        printf("Only one player left in the round!  They win the pot!\n");
+        for(unsigned int i=0; i<answer.players.size(); i++){
+            if(answer.players[i].isInHand){
+                answer.players[i].score += answer.pot; // player wins the pot
+                answer = endRoundChecks(answer);
+                answer = startRound(answer);
+                return answer;
+            }
+        }
+
+    }
+
+    // Updating player turn (but skipping over players who have folded)
+    do{
+        answer.playerTurn = (answer.playerTurn == answer.numPlayers - 1) ? 0 : answer.playerTurn+1;
+    } while(answer.players[answer.playerTurn].isInHand == 0);
+    
 
     // Case 1:  Going to the next round
     if(answer.playerTurn = answer.greatest){ // gone through a full loop - go to next round

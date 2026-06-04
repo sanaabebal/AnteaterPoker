@@ -607,7 +607,7 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
         GtkWidget *AlphaEndMessage;
 
         TextMessage = gtk_label_new("Waiting for other players to join...");
-        AlphaEndMessage = gtk_label_new("This is as far as we got for the alpha version of the anteater poker project.  Thank you for participating!  The server GUI should now display some info about your login\n\nHeads up:  For the beta version, this screen will freeze after 3 seconds until the last person logs on.  Don't worry, though--you should still be able to do other things on your computer while in this wait menu!");
+        AlphaEndMessage = gtk_label_new("Thank you for participating!  The server GUI should now display some info about your login\n\nHeads up:  This screen may freeze after 3 seconds until the last person logs on.  \nDon't worry, though--you should still be able to do other things on your computer while in this wait menu!\n  If you have to leave the game though, use Control + C and notify the other players, because they will have to restart the server/login process.");
 
         // printf("Labels created.\n");
 
@@ -649,11 +649,11 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
     void defaultButtonClick(GtkWidget *button, gpointer clickData){
         printf("A button was clicked!\n");
     }
-    void call(GtkWidget *button, gpointer clickData){
+    void callClick(GtkWidget *button, gpointer clickData){
         int proposedCall = officialGameState.callAmount - officialGameState.players[playerLoginInfo.playerNum].bet;
         printf("Proposed call amount:  %d\nPlayer's current score:  %d\n", proposedCall, officialGameState.players[playerLoginInfo.playerNum].score);
         if(proposedCall >= officialGameState.players[playerLoginInfo.playerNum].score || proposedCall == 0){
-            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  call.  Call must be used to match the current bet.  Please try again.");
+            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  call.  Call must be used to match the current bet and cannot be used for all in.  Please try again.");
             return;
         }
 
@@ -662,9 +662,39 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
         officialGameState.players[playerLoginInfo.playerNum].score -= proposedCall;
         officialGameState.pot += proposedCall;
 
+        gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "");
         UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
         
     }
+    void raiseClick(GtkWidget *button, gpointer clickData){
+        const char *raise; 
+        raise = gtk_entry_get_text(GTK_ENTRY(gameWindow.raiseEntry));
+        int raiseAmount = atoi(raise);
+        int proposedRaise = officialGameState.callAmount + raiseAmount - officialGameState.players[playerLoginInfo.playerNum].bet; // full bet minus what has already been bet
+
+        if(raiseAmount <= 0 || proposedRaise >= officialGameState.players[playerLoginInfo.playerNum].score){
+            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  raise.  Raise must be used to match the current bet + some extra (extra specified by user), and it cannot be used for all in.  Please try again.");
+            return;
+        }
+
+        // Valid raise
+        officialGameState.greatest = officialGameState.playerTurn; // new greatest better
+        officialGameState.players[playerLoginInfo.playerNum].bet += proposedRaise;
+        officialGameState.players[playerLoginInfo.playerNum].score -= proposedRaise;
+        officialGameState.pot += proposedRaise;
+        officialGameState.callAmount += raiseAmount;
+
+        gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "");
+        UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
+    }
+    void foldClick(GtkWidget *button, gpointer clickData){
+        // Valid fold
+        officialGameState.players[playerLoginInfo.playerNum].isInHand = 0;
+
+        gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "");
+        UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
+    }
+
     void InitGameScreenWindow(GAMESTATE &gameState, int playerNum){
         /*   Creating entries   */
         // Player entries
@@ -810,9 +840,9 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
 
 
         /*   Activating buttons   */
-            g_signal_connect(gameWindow.callButton, "clicked", G_CALLBACK(call), NULL);
-            g_signal_connect(gameWindow.raiseButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
-            g_signal_connect(gameWindow.foldButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
+            g_signal_connect(gameWindow.callButton, "clicked", G_CALLBACK(callClick), NULL);
+            g_signal_connect(gameWindow.raiseButton, "clicked", G_CALLBACK(raiseClick), NULL);
+            g_signal_connect(gameWindow.foldButton, "clicked", G_CALLBACK(foldClick), NULL);
             g_signal_connect(gameWindow.helpMenuButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
             g_signal_connect(gameWindow.ShutdownButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
 
@@ -838,6 +868,9 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
             }
             if(newPlayerNumber == -1){ // player not found -- has been eliminated
                 printf("PLAYER HAS BEEN ELIMINATED FROM THE GAME.\n");
+                close(SocketFD);
+                exit(0);
+
                 return;
             }
         }
@@ -912,18 +945,21 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
 
         
         // Player input entries (controlling display)
-        if(definitelyNotTurn || playerLoginInfo.playerType == Computer || officialGameState.playerTurn != playerLoginInfo.playerNum){
+        // Do NOT show the display if it is definitely not the player's turn, if the player is a computer player, if it is not the player's turn, or if the player is not in the hand
+        if(definitelyNotTurn || playerLoginInfo.playerType == Computer || officialGameState.playerTurn != playerLoginInfo.playerNum || officialGameState.players[playerLoginInfo.playerNum].isInHand == 0){
             gtk_widget_hide(gameWindow.callButton);
             gtk_widget_hide(gameWindow.raiseButton);
             gtk_widget_hide(gameWindow.raiseEntry);
             gtk_widget_hide(gameWindow.foldButton);
             gtk_widget_hide(gameWindow.checkButton);
+            gtk_widget_hide(gameWindow.ShutdownButton);
         } else{
             gtk_widget_show(gameWindow.callButton);
             gtk_widget_show(gameWindow.raiseButton);
             gtk_widget_show(gameWindow.raiseEntry);
             gtk_widget_show(gameWindow.foldButton);
             gtk_widget_show(gameWindow.checkButton);
+            gtk_widget_show(gameWindow.ShutdownButton);
         }
 
 
