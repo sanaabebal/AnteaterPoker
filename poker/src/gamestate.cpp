@@ -151,33 +151,24 @@
 
 
 
-GAMESTATE updateGameState(GAMESTATE gameState){
-    
+GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify pot, call amount, player.isInHand, player.bet, player.score, and player.greatest; they do not modify the round number or player turn
+    GAMESTATE answer = recvGameState;
+    // Updating player turn
+    answer.playerTurn = (answer.playerTurn == answer.numPlayers - 1) ? 0 : answer.playerTurn+1;
 
-}
+    // Case 1:  Going to the next round
+    if(answer.playerTurn = answer.greatest){ // gone through a full loop - go to next round
+        if(answer.round == Preflop){ answer = flopUpdate(answer); }
+        else if(answer.round == Flop){ answer = turnUpdate(answer); }
+        else if(answer.round == Turn){ answer = riverUpdate(answer); }
+        else if(answer.round == River){ answer = showdownUpdate(answer); answer = endRoundChecks(answer); answer = startRound(answer);}
+        return answer;
+    }
 
-
-GAMESTATE preflopUpdate(GAMESTATE gameState){
-    GAMESTATE answer = gameState;
-
-    // Handling the pot
-    int smallBlindPlayer = (answer.dealerPlayer == answer.numPlayers-1) ? 0 : answer.dealerPlayer + 1;
-    int bigBlindPlayer = (smallBlindPlayer == answer.numPlayers-1) ? 0 : smallBlindPlayer + 1;
-    answer.pot += 3;
-    answer.players[smallBlindPlayer].score -= 1;
-    answer.players[bigBlindPlayer].score -= 2;
-
-    // Handling player stats
-    answer.players[smallBlindPlayer].bet = 1;
-    answer.players[bigBlindPlayer].bet = 2;
-    answer.greatest = bigBlindPlayer;
-    answer.callAmount = 2;
-    answer.playerTurn = (bigBlindPlayer == answer.numPlayers-1) ? 0 : bigBlindPlayer + 1;
-
-
-    // Wrapup
+    // Case 2:  Not going to the next round
     return answer;
 }
+
 
 
 GAMESTATE startRound(GAMESTATE gameState){
@@ -302,3 +293,59 @@ GAMESTATE endRoundChecks(GAMESTATE gameState){ // determines hypothetetical "pre
 }
 
 
+GAMESTATE preflopUpdate(GAMESTATE gameState){
+    GAMESTATE answer = gameState;
+
+    // Handling the pot
+    int smallBlindPlayer = (answer.dealerPlayer == answer.numPlayers-1) ? 0 : answer.dealerPlayer + 1;
+    int bigBlindPlayer = (smallBlindPlayer == answer.numPlayers-1) ? 0 : smallBlindPlayer + 1;
+    answer.pot += 3;
+    answer.players[smallBlindPlayer].score -= 1;
+    answer.players[bigBlindPlayer].score -= 2;
+
+    // Handling player stats
+    answer.players[smallBlindPlayer].bet = 1;
+    answer.players[bigBlindPlayer].bet = 2;
+    answer.greatest = bigBlindPlayer;
+    answer.callAmount = 2;
+    answer.playerTurn = (bigBlindPlayer == answer.numPlayers-1) ? 0 : bigBlindPlayer + 1;
+
+
+    // Wrapup
+    return answer;
+}
+
+GAMESTATE flopUpdate(GAMESTATE gameState){
+    GAMESTATE answer;
+
+    // Handling player stats
+    for(unsigned int i=0; i<answer.players.size(); i++){
+        answer.players[i].bet = 0;
+    }
+    answer.callAmount = 0;
+}
+
+GAMESTATE turnUpdate(GAMESTATE gameState){
+    GAMESTATE answer;
+
+    // Handling player stats
+    for(unsigned int i=0; i<answer.players.size(); i++){
+        answer.players[i].bet = 0;
+    }
+    answer.callAmount = 0;
+}
+
+GAMESTATE riverUpdate(GAMESTATE gameState){
+    GAMESTATE answer;
+
+    // Handling player stats
+    for(unsigned int i=0; i<answer.players.size(); i++){
+        answer.players[i].bet = 0;
+    }
+    answer.callAmount = 0;
+}
+
+GAMESTATE showdownUpdate(GAMESTATE gameState){
+    printf("Sorry, showDownUpdate() not implemented right now!\n");
+    return gameState;
+}

@@ -35,6 +35,7 @@ int SocketFD = 0; // used by several programs
 
 GAMESTATE officialGameState;
 LOGININFO playerLoginInfo;
+int officialPlayerSocket = 0;
 
 
 /*** global functions ****************************************************/
@@ -163,9 +164,16 @@ typedef struct gamewindow{
             GtkWidget *raiseButton;
             GtkWidget *raiseEntry;
         GtkWidget *foldButton;
+        GtkWidget *checkButton;
         GtkWidget *InputError;
         GtkWidget *helpMenuButton;
         GtkWidget *ShutdownButton;
+
+    GtkWidget *miscBox;
+        GtkWidget *pot;
+        GtkWidget *callAmount;
+        GtkWidget *playerNumber;
+        GtkWidget *turn;
 
 
     GtkWidget *playersAndCardsBox;
@@ -206,6 +214,7 @@ void WaitScreenWindow(LOGININFO &loginInfo);
 gboolean WaitFreeze(gpointer na);
 
 void InitGameScreenWindow(GAMESTATE &gameState, int playerNum);
+void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyNotTurn);
 
 // Helper functions
     void resetMainDisplay(){
@@ -240,6 +249,30 @@ void InitGameScreenWindow(GAMESTATE &gameState, int playerNum);
 
         // Wrapup
         return newImage;
+    }
+
+    void setScaledImage(GtkWidget *element, const char *filename, int w, int h){
+        GError *error = NULL;
+        GtkWidget *newImage;
+
+        GdkPixbuf *pixBuf = gdk_pixbuf_new_from_file_at_scale(filename, w, h, TRUE, &error);
+
+        char msg[500];
+        sprintf(msg, "Couldn't find %s", filename);
+
+        if(error != NULL){
+            g_error_free(error);
+            gtk_label_set_text(GTK_LABEL(element), msg);
+            //newImage = gtk_label_new(msg);
+            return;
+        }
+
+        gtk_image_set_from_pixbuf(GTK_IMAGE(element), pixBuf);
+        newImage = gtk_image_new_from_pixbuf(pixBuf);
+        g_object_unref(pixBuf);
+
+        // Wrapup
+        return;
     }
 
 
@@ -616,12 +649,29 @@ void InitGameScreenWindow(GAMESTATE &gameState, int playerNum);
     void defaultButtonClick(GtkWidget *button, gpointer clickData){
         printf("A button was clicked!\n");
     }
+    void call(GtkWidget *button, gpointer clickData){
+        int proposedCall = officialGameState.callAmount - officialGameState.players[playerLoginInfo.playerNum].bet;
+        printf("Proposed call amount:  %d\nPlayer's current score:  %d\n", proposedCall, officialGameState.players[playerLoginInfo.playerNum].score);
+        if(proposedCall >= officialGameState.players[playerLoginInfo.playerNum].score || proposedCall == 0){
+            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  call.  Call must be used to match the current bet.  Please try again.");
+            return;
+        }
+
+        // Valid call
+        officialGameState.players[playerLoginInfo.playerNum].bet += proposedCall;
+        officialGameState.players[playerLoginInfo.playerNum].score -= proposedCall;
+        officialGameState.pot += proposedCall;
+
+        UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
+        
+    }
     void InitGameScreenWindow(GAMESTATE &gameState, int playerNum){
         /*   Creating entries   */
         // Player entries
             char description[500];    
             for(unsigned int i=0; i<gameState.players.size(); i++){
                 PLAYER player = gameState.players[i];
+                officialPlayerSocket = player.playerSocket; // ID'ing information used at the beginning of each round to determine if player number has changed
                 sprintf(description, "Player %d: %s\nPoints: %d\nBet: %d\nIn round: %s\nEliminated?: %s\n%s\n", i+1, player.name, player.score, player.bet, 
                     (player.isInHand) ? "yes" : "no", (player.isEliminated) ? "yes" : "no", (i == gameState.dealerPlayer) ? "DEALER" : "");
                 gameWindow.playerIcons[i] = gtk_label_new(description);
@@ -663,12 +713,25 @@ void InitGameScreenWindow(GAMESTATE &gameState, int playerNum);
                 }
             }
         
+        // Miscellaneous entries
+            char miscMsg[500];
+            sprintf(miscMsg, "Pot:  %d points", gameState.pot);
+            gameWindow.pot = gtk_label_new(miscMsg);
+            sprintf(miscMsg, "Call amount:  %d points", gameState.callAmount);
+            gameWindow.callAmount = gtk_label_new(miscMsg);
+            sprintf(miscMsg, "You are:  Player %d", playerLoginInfo.playerNum + 1);
+            gameWindow.playerNumber = gtk_label_new(miscMsg);
+            sprintf(miscMsg, "It is Player %d's turn", gameState.playerTurn + 1);
+            gameWindow.turn = gtk_label_new(miscMsg);
+
+        
         // Player input entries
             gameWindow.callButton = gtk_button_new_with_label("Call");
             gameWindow.raiseButton = gtk_button_new_with_label("Confirm Raise");
             gameWindow.raiseEntry = gtk_entry_new();
             gameWindow.foldButton = gtk_button_new_with_label("Fold");
-            gameWindow.InputError = gtk_label_new("Illegal move.  Please try again.");
+            gameWindow.checkButton = gtk_button_new_with_label("Check");
+            gameWindow.InputError = gtk_label_new("");
             gameWindow.helpMenuButton = gtk_button_new_with_label("Help Menu");
             gameWindow.ShutdownButton = gtk_button_new_with_label("End game and stop server");
 
@@ -715,34 +778,39 @@ void InitGameScreenWindow(GAMESTATE &gameState, int playerNum);
                 gtk_box_pack_start(GTK_BOX(gameWindow.playerCardsBox), gameWindow.playerCards[i], FALSE, TRUE, 0);
             }
 
+            // Miscellaneous
+                gameWindow.miscBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+                gtk_box_pack_start(GTK_BOX(gameWindow.playersAndCardsBox), gameWindow.miscBox, FALSE, TRUE, 2);
+                gtk_box_pack_start(GTK_BOX(gameWindow.miscBox), gameWindow.pot, FALSE, TRUE, 0);
+                gtk_box_pack_start(GTK_BOX(gameWindow.miscBox), gameWindow.callAmount, FALSE, TRUE, 0);
+                gtk_box_pack_start(GTK_BOX(gameWindow.miscBox), gameWindow.playerNumber, FALSE, TRUE, 0);
+                gtk_box_pack_start(GTK_BOX(gameWindow.miscBox), gameWindow.turn, FALSE, TRUE, 0);
+
+            
+
 
             // Moves
-            gameWindow.playerInputBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-            gtk_box_pack_start(GTK_BOX(gameWindow.movesAndLogBox), gameWindow.playerInputBox, FALSE, TRUE, 2);
-            
-            gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.callButton, FALSE, FALSE, 2);
-            gameWindow.raiseBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
-            gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.raiseBox, FALSE, FALSE, 2);
-            gtk_box_pack_start(GTK_BOX(gameWindow.raiseBox), gameWindow.raiseEntry, FALSE, FALSE, 2);
-            gtk_box_pack_start(GTK_BOX(gameWindow.raiseBox), gameWindow.raiseButton, FALSE, FALSE, 2);
-            gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.foldButton, FALSE, FALSE, 2);
-            // gtk_container_add(GTK_CONTAINER(gameWindow.playerInputBox), gameWindow.InputError); -- Don't want to display this unless there is an actual input error
-            gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.helpMenuButton, FALSE, FALSE, 2);
-            gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.ShutdownButton, FALSE, FALSE, 2);
-
-
-            // Logs
-            // gameWindow.logScrollBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-            gtk_box_pack_start(GTK_BOX(gameWindow.movesAndLogBox), gameWindow.logScrollBox, TRUE, TRUE, 2);
-
-            // Moves (and raiseBox)
-            // gameWindow.raiseBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-            
+            if(playerLoginInfo.playerType != Computer && gameState.playerTurn == playerLoginInfo.playerNum){
+                gameWindow.playerInputBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+                gtk_box_pack_start(GTK_BOX(gameWindow.movesAndLogBox), gameWindow.playerInputBox, FALSE, TRUE, 2);
+                
+                gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.callButton, FALSE, FALSE, 2);
+                gameWindow.raiseBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+                gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.raiseBox, FALSE, FALSE, 2);
+                gtk_box_pack_start(GTK_BOX(gameWindow.raiseBox), gameWindow.raiseEntry, FALSE, FALSE, 2);
+                gtk_box_pack_start(GTK_BOX(gameWindow.raiseBox), gameWindow.raiseButton, FALSE, FALSE, 2);
+                gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.foldButton, FALSE, FALSE, 2);
+                gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.checkButton, FALSE, FALSE, 2);
+                gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.InputError, FALSE, FALSE, 2);
+                // gtk_container_add(GTK_CONTAINER(gameWindow.playerInputBox), gameWindow.InputError); -- Don't want to display this unless there is an actual input error
+                gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.helpMenuButton, FALSE, FALSE, 2);
+                gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.ShutdownButton, FALSE, FALSE, 2);
+            }
             
 
 
         /*   Activating buttons   */
-            g_signal_connect(gameWindow.callButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
+            g_signal_connect(gameWindow.callButton, "clicked", G_CALLBACK(call), NULL);
             g_signal_connect(gameWindow.raiseButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
             g_signal_connect(gameWindow.foldButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
             g_signal_connect(gameWindow.helpMenuButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
@@ -755,6 +823,110 @@ void InitGameScreenWindow(GAMESTATE &gameState, int playerNum);
         printCard(officialGameState.allCards[playerLoginInfo.playerNum][1]);
         printf("\n");
         gtk_widget_show_all(Window);
+    }
+
+    void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyNotTurn){
+        // Updating player number based on possible eliminations
+        if(officialGameState.round == Preflop){
+            int newPlayerNumber = -1;
+            for(unsigned int i=0; i<officialGameState.players.size(); i++){
+                if(officialGameState.players[i].playerSocket == officialPlayerSocket){
+                    playerLoginInfo.playerNum = i; // updating official record of player number
+                    newPlayerNumber = i;
+                    break;
+                }
+            }
+            if(newPlayerNumber == -1){ // player not found -- has been eliminated
+                printf("PLAYER HAS BEEN ELIMINATED FROM THE GAME.\n");
+                return;
+            }
+        }
+
+
+        // Player entries
+            char description[500];    
+            for(unsigned int i=0; i<gameState.players.size(); i++){
+                PLAYER player = gameState.players[i];
+                officialPlayerSocket = player.playerSocket; // ID'ing information used at the beginning of each round to determine if player number has changed
+                sprintf(description, "Player %d: %s\nPoints: %d\nBet: %d\nIn round: %s\nEliminated?: %s\n%s\n", i+1, player.name, player.score, player.bet, 
+                    (player.isInHand) ? "yes" : "no", (player.isEliminated) ? "yes" : "no", (i == gameState.dealerPlayer) ? "DEALER" : "");
+                gtk_label_set_text(GTK_LABEL(gameWindow.playerIcons[i]), description);
+            }
+
+        // Card entries
+            if((unsigned int)playerNum >= gameState.allCards.size()){
+                printf("ERROR:  When trying to display cards for a given player, the player number exceeded the size of the array.  Exiting function...\n");
+                return;
+            }
+            std::string cardStr;
+            Card foundCard;
+            for(int i=0; i<2; i++){
+                foundCard = gameState.allCards[playerNum][i];
+                if(foundCard.getValue() == Anteater){
+                    // gameWindow.playerCards[i] = createScaledImage(anteaterRef.c_str(), CARD_W, CARD_H);
+                    //gtk_image_set_from_file(GTK_IMAGE(gameWindow.playerCards[i]), anteaterRef.c_str());
+                    setScaledImage(gameWindow.playerCards[i], anteaterRef.c_str(), CARD_W, CARD_H);
+                    continue;
+                }
+                cardStr = mainDeckRef[foundCard.getSuit()][foundCard.getValue()];
+                // gameWindow.playerCards[i] = createScaledImage(cardStr.c_str(), CARD_W, CARD_H);
+                // gtk_image_set_from_file(GTK_IMAGE(gameWindow.playerCards[i]), cardStr.c_str());
+                setScaledImage(gameWindow.playerCards[i], cardStr.c_str(), CARD_W, CARD_H);
+            }
+
+            if(gameState.allCards.size() < 3){
+                printf("ERROR:  When trying to display community cards, noticed that there are only two piles.  This is not enough.  Exiting function...\n");
+                return;
+            }
+            for(int i=0; i<5; i++){
+                int r = gameState.round;
+                if(  r == Preflop || (r == Flop && i>2) || (r == Turn && i>3)  ){
+                    // gameWindow.commCards[i] = createScaledImage(backRef.c_str(), CARD_W, CARD_H);
+                    // gtk_image_set_from_file(GTK_IMAGE(gameWindow.commCards[i]), backRef.c_str());
+                    setScaledImage(gameWindow.commCards[i], backRef.c_str(), CARD_W, CARD_H);
+                } else{
+                    foundCard = gameState.allCards[gameState.allCards.size()-2][i]; // ex:  player1, player2, player3, _commCards_, restOfCards
+                    if(foundCard.getValue() == Anteater){
+                        // gameWindow.commCards[i] = createScaledImage(anteaterRef.c_str(), CARD_W, CARD_H);
+                        // gtk_image_set_from_file(GTK_IMAGE(gameWindow.commCards[i]), anteaterRef.c_str());
+                        setScaledImage(gameWindow.commCards[i], anteaterRef.c_str(), CARD_W, CARD_H);
+                        continue;
+                    } 
+                    cardStr = mainDeckRef[foundCard.getSuit()][foundCard.getValue()];
+                    // gameWindow.commCards[i] = createScaledImage(cardStr.c_str(), CARD_W, CARD_H);
+                    // gtk_image_set_from_file(GTK_IMAGE(gameWindow.commCards[i]), cardStr.c_str());
+                    setScaledImage(gameWindow.commCards[i], cardStr.c_str(), CARD_W, CARD_H);
+                }
+            }
+        
+        // Miscellaneous entries
+            char miscMsg[500];
+            sprintf(miscMsg, "Pot:  %d points", gameState.pot);
+            gtk_label_set_text(GTK_LABEL(gameWindow.pot), miscMsg);
+            sprintf(miscMsg, "Call amount:  %d points", gameState.callAmount);
+            gtk_label_set_text(GTK_LABEL(gameWindow.callAmount), miscMsg);
+            sprintf(miscMsg, "You are:  Player %d", playerLoginInfo.playerNum + 1);
+            gtk_label_set_text(GTK_LABEL(gameWindow.playerNumber), miscMsg);
+            sprintf(miscMsg, "It is Player %d's turn", gameState.playerTurn + 1);
+            gtk_label_set_text(GTK_LABEL(gameWindow.turn), miscMsg);
+
+        
+        // Player input entries (controlling display)
+        if(definitelyNotTurn || playerLoginInfo.playerType == Computer || officialGameState.playerTurn != playerLoginInfo.playerNum){
+            gtk_widget_hide(gameWindow.callButton);
+            gtk_widget_hide(gameWindow.raiseButton);
+            gtk_widget_hide(gameWindow.raiseEntry);
+            gtk_widget_hide(gameWindow.foldButton);
+            gtk_widget_hide(gameWindow.checkButton);
+        } else{
+            gtk_widget_show(gameWindow.callButton);
+            gtk_widget_show(gameWindow.raiseButton);
+            gtk_widget_show(gameWindow.raiseEntry);
+            gtk_widget_show(gameWindow.foldButton);
+            gtk_widget_show(gameWindow.checkButton);
+        }
+
+
     }
     
 
