@@ -1,60 +1,60 @@
-// gameOverScreen.hpp
+#ifndef GAMEOVER_SCREEN_HPP
+#define GAMEOVER_SCREEN_HPP
 
-#pragma once
 #include <gtk/gtk.h>
-#include <functional>
-#include <string>
 #include <vector>
-
-using namespace std;
+#include <string>
+#include <utility>
+#include <functional>
 
 struct FinalPlayerResults {
     int rank;
-    string username;
+    std::string username;
     int chips;
     int chipDelta;
-
     bool isWinner;
-    vector<pair<string, string>> handCards;
-
+    std::vector<std::pair<std::string, std::string>> handCards;
 };
 
 struct gameSummary {
     int totalHands;
-    string duration;
+    std::string duration;
     int biggestPot;
 };
 
 class gameOverScreen {
-    public:
-        gameOverScreen();
-        ~gameOverScreen();
+public:
+    gameOverScreen();
+    ~gameOverScreen();
 
-        GtkWidget* getWidget();
+    GtkWidget* getWidget();
+    void setResults(const std::vector<FinalPlayerResults>& results, const gameSummary& summary);
 
-        void setResults(const vector<FinalPlayerResults>& results,
-                        const gameSummary& summary );
+    // Public engine hook variables
+    std::function<void()> onPlayAgain;
+    std::function<void()> onExitToLobby;
 
-        function<void()> onPlayAgain();
-        function<void()> onExit;
+private:
+    void buildUI();
+    void applyStyles();
+    
+    void populateResults(const std::vector<FinalPlayerResults>& results);
+    void populateSummary(const gameSummary& summary);
+    void drawnHandCards(cairo_t* cr, int w, int h);
 
-    private:
-        
-        GtkWidget *container;
-        GtkWidget *resultBox;
-        GtkWidget *summaryBox;
-        GtkWidget *playAgainButton;
-        GtkWidget *exitLobbyButton;
+    GtkWidget* container;
+    GtkWidget* resultBox;
+    GtkWidget* winnerHandArea; 
+    GtkWidget* summaryBox;
+    GtkWidget* playAgainButton;
+    GtkWidget* exitLobbyButton;
 
-        void buildUI();
-        void applyStyles();
+    std::vector<std::pair<std::string, std::string>> winnerCards;
 
-        void populateResults(const vector<FinalPlayerResults>& results);
-        void populateSummary(const gameSummary& summary);
-
-        static gboolean onDrawHand(GtkWidget* widget, cairo_t* cr, gpointer inputData);
-        void drawnHandCards(cairo_t* cr, int w, int h);
-
-        static void onPlayAgainButton(GtkButton*, gpointer);
-        static void onExitLobbu(GtkButton*, gpointer);
+    // ── RENAMED STATIC GTK BRIDGE HANDLERS ──
+    static gboolean onDrawHand(GtkWidget* widget, cairo_t* cr, gpointer data);
+    static void onPlayAgainClicked(GtkButton* button, gpointer data);
+    static void onExitLobbyClicked(GtkButton* button, gpointer data);
 };
+
+#endif // GAMEOVER_SCREEN_HPP

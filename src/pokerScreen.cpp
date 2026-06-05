@@ -127,7 +127,6 @@ static void setRGBA(cairo_t* cr, double r, double g, double b, double a) {
     cairo_set_source_rgba(cr, r, g, b, a);
 }
 
-// ── Lifecycle Hooks ───────────────────────────────────────────────────────
 pokerScreen::pokerScreen() {
     buildUI();
     applyStyles();
@@ -139,7 +138,6 @@ GtkWidget* pokerScreen::getWidget() {
     return container; 
 }
 
-// ── UI Construction ───────────────────────────────────────────────────────
 void pokerScreen::buildUI() {
     container = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_widget_set_name(container, "gs-root");
@@ -218,7 +216,6 @@ void pokerScreen::applyStyles() {
     g_object_unref(provider);
 }
 
-// ── State synchronization ─────────────────────────────────────────────────
 void pokerScreen::updateGameState(const vector<playerInfo>& players,
                                   const vector<Card>&       communityCards,
                                   const vector<Card>&       holeCards,
@@ -245,7 +242,6 @@ void pokerScreen::setActions(bool enable) {
     gtk_widget_set_sensitive(betSpinButton, enable);
 }
 
-// ── Cairo Engine Processing ───────────────────────────────────────────────
 gboolean pokerScreen::onDraw(GtkWidget* widget, cairo_t* cr, gpointer data) {
     auto* self = static_cast<pokerScreen*>(data);
     int w = gtk_widget_get_allocated_width(widget);
@@ -261,7 +257,6 @@ void pokerScreen::drawTable(cairo_t* cr, int w, int h) {
     double cx = w / 2.0, cy = h / 2.0;
     double rx = w * 0.44, ry = h * 0.38;
 
-    // Drop Shadow
     setRGBA(cr, 0, 0, 0, 0.4);
     cairo_save(cr);
     cairo_translate(cr, cx + 4, cy + 6);
@@ -270,7 +265,6 @@ void pokerScreen::drawTable(cairo_t* cr, int w, int h) {
     cairo_restore(cr);
     cairo_fill(cr);
 
-    // Wooden Rim Boundary
     setRGB(cr, 0.38, 0.26, 0.08);
     cairo_save(cr);
     cairo_translate(cr, cx, cy); 
@@ -279,7 +273,6 @@ void pokerScreen::drawTable(cairo_t* cr, int w, int h) {
     cairo_restore(cr);
     cairo_fill(cr);
 
-    // Main Internal Felt Cushion
     setRGB(cr, 0.13, 0.40, 0.25);
     cairo_save(cr);
     cairo_translate(cr, cx, cy); 
@@ -288,7 +281,6 @@ void pokerScreen::drawTable(cairo_t* cr, int w, int h) {
     cairo_restore(cr);
     cairo_fill(cr);
 
-    // Inner Accent Pin-striping
     setRGBA(cr, 0.16, 0.48, 0.30, 0.5);
     cairo_save(cr);
     cairo_translate(cr, cx, cy - ry * 0.08);
@@ -297,7 +289,6 @@ void pokerScreen::drawTable(cairo_t* cr, int w, int h) {
     cairo_restore(cr);
     cairo_fill(cr);
 
-    // Pot Display Text Box
     ostringstream potStr;
     potStr << "POT: $" << cachedPot;
     cairo_select_font_face(cr, "Georgia", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
@@ -308,7 +299,7 @@ void pokerScreen::drawTable(cairo_t* cr, int w, int h) {
     cairo_move_to(cr, cx - te.width / 2.0, cy - ry * 0.28);
     cairo_show_text(cr, potStr.str().c_str());
 
-    // Community Cards Setup
+
     double cardW = w * 0.08, cardH = cardW * 1.45;
     double cardSpacing = cardW + 6;
     int numCommunity = (int)cachedCommunity.size();
@@ -324,7 +315,6 @@ void pokerScreen::drawTable(cairo_t* cr, int w, int h) {
         drawCard(cr, startX + i * cardSpacing, cardY, cardW, cardH, back);
     }
 
-    // Hero Hole Cards Setup
     double hcY = cy + ry * 0.52;
     double hcX = cx - cardSpacing / 2.0 - cardW / 2.0;
     for (size_t i = 0; i < cachedHole.size(); ++i) {
@@ -337,7 +327,6 @@ void pokerScreen::drawTable(cairo_t* cr, int w, int h) {
         cairo_restore(cr);
     }
 
-    // Dealer Token Placement Layout
     int numSeats = (int)cachedPlayers.size();
     for (int i = 0; i < numSeats; ++i) {
         if (cachedPlayers[i].isDealer) {
@@ -362,13 +351,11 @@ void pokerScreen::drawTable(cairo_t* cr, int w, int h) {
         }
     }
 
-    // Seats Render Layout Loop
     for (int i = 0; i < numSeats; ++i) {
         drawPlayer(cr, w, h, cachedPlayers[i], i, numSeats);
     }
 }
 
-// ── Card Asset Rendering Engine with Auto-Cropping ───────────────────────────
 void pokerScreen::drawCard(cairo_t* cr, double x, double y,
                            double cw, double ch, const Card& card) {
     string filePath = getCardAssetPath(card);
@@ -379,7 +366,6 @@ void pokerScreen::drawCard(cairo_t* cr, double x, double y,
     if (error) {
         g_clear_error(&error);
         
-        // Render a clean fallback digital card look
         setRGB(cr, 0.18, 0.18, 0.18); 
         cairo_rectangle(cr, x, y, cw, ch);
         cairo_fill(cr);
@@ -402,7 +388,6 @@ void pokerScreen::drawCard(cairo_t* cr, double x, double y,
         return;
     }
 
-    // ── AUTOMATIC TRANSPARENCY CROPPING LOGIC ──────────────────────────────
     int imgW = gdk_pixbuf_get_width(pixbuf);
     int imgH = gdk_pixbuf_get_height(pixbuf);
     
@@ -418,7 +403,7 @@ void pokerScreen::drawCard(cairo_t* cr, double x, double y,
             guchar* rowPtr = pixels + row * rowstride;
             for (int col = 0; col < imgW; col++) {
                 guchar alpha = rowPtr[col * nChannels + (nChannels - 1)];
-                if (alpha > 10) { // Found a visible pixel
+                if (alpha > 10) { 
                     if (col < minX) minX = col;
                     if (col > maxX) maxX = col;
                     if (row < minY) minY = row;
@@ -429,7 +414,7 @@ void pokerScreen::drawCard(cairo_t* cr, double x, double y,
     }
 
     GdkPixbuf* croppedPixbuf = nullptr;
-    // If the image is entirely transparent or has no alpha channel, skip cropping
+
     if (maxX >= minX && maxY >= minY) {
         int cropW = maxX - minX + 1;
         int cropH = maxY - minY + 1;
@@ -438,7 +423,6 @@ void pokerScreen::drawCard(cairo_t* cr, double x, double y,
         croppedPixbuf = g_object_ref(pixbuf); // Fallback to full image
     }
 
-    // Scale only the cropped region to fill your exact target card dimensions
     GdkPixbuf* scaledPixbuf = gdk_pixbuf_scale_simple(
         croppedPixbuf, (int)cw, (int)ch, GDK_INTERP_BILINEAR
     );
@@ -448,13 +432,11 @@ void pokerScreen::drawCard(cairo_t* cr, double x, double y,
     cairo_paint(cr);
     cairo_restore(cr);
 
-    // Cleanup memory allocations
     g_object_unref(scaledPixbuf);
     g_object_unref(croppedPixbuf);
     g_object_unref(pixbuf);
 }
 
-// ── Seat Layout Pipeline ──────────────────────────────────────────────────
 void pokerScreen::drawPlayer(cairo_t* cr, int w, int h,
                              const playerInfo& p, int seatIndex, int numSeats) {
     double cx = w / 2.0, cy = h / 2.0;
@@ -463,17 +445,15 @@ void pokerScreen::drawPlayer(cairo_t* cr, int w, int h,
     double angleOffset = M_PI / 2.0;
     double angle       = angleOffset + (2.0 * M_PI * seatIndex / numSeats);
     
-    // Increased radial offset slightly to handle the wider boxes cleanly
     double px = cx + rx * 1.12 * cos(angle);
     double py = cy + ry * 1.16 * sin(angle);
 
-    // FIX: Significantly wider and taller boxes to containerize text fields comfortably
     double boxW = 150, boxH = 65;
     double bx = px - boxW / 2.0, by = py - boxH / 2.0;
 
     bool isTurn = p.yourTurn;
 
-    if (isTurn) setRGBA(cr, 0.85, 0.73, 0.25, 0.95); // Slightly brighter turn border
+    if (isTurn) setRGBA(cr, 0.85, 0.73, 0.25, 0.95); 
     else        setRGBA(cr, 0.12, 0.25, 0.25, 0.90);
 
     cairo_rectangle(cr, bx, by, boxW, boxH);
@@ -484,8 +464,7 @@ void pokerScreen::drawPlayer(cairo_t* cr, int w, int h,
     cairo_rectangle(cr, bx, by, boxW, boxH);
     cairo_stroke(cr);
 
-    // Avatar spacing
-    double avR = 20; // Slightly larger avatar
+    double avR = 20; 
     double avX = bx + avR + 8, avY = by + boxH / 2.0;
 
     static const double avColours[5][3] = {
@@ -497,24 +476,20 @@ void pokerScreen::drawPlayer(cairo_t* cr, int w, int h,
     cairo_arc(cr, avX, avY, avR, 0, 2 * M_PI);
     cairo_fill(cr);
 
-    // Text Alignment Column Definition
     double textStartX = bx + (avR * 2) + 14;
 
-    // Player Username
     cairo_select_font_face(cr, "Georgia", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
     cairo_set_font_size(cr, 12);
     setRGB(cr, 0.98, 0.96, 0.85);
     cairo_move_to(cr, textStartX, by + 18);
     cairo_show_text(cr, p.name.c_str());
 
-    // Status Field
     cairo_set_font_size(cr, 10.5);
     setRGBA(cr, 0.85, 0.85, 0.78, 0.95);
     cairo_move_to(cr, textStartX, by + 34);
     string statusStr = "Status: " + p.status;
     cairo_show_text(cr, statusStr.c_str());
 
-    // Stack Balance Field
     cairo_set_font_size(cr, 10.5);
     setRGB(cr, 0.80, 0.98, 0.80);
     cairo_move_to(cr, textStartX, by + 50);
@@ -522,7 +497,6 @@ void pokerScreen::drawPlayer(cairo_t* cr, int w, int h,
     stackStr << "Stack: $" << p.stack;
     cairo_show_text(cr, stackStr.str().c_str());
 
-    // Fold Overlay state
     if (p.status == "Folded") {
         setRGBA(cr, 0.05, 0.05, 0.05, 0.75); // Darken card profile
         cairo_rectangle(cr, bx, by, boxW, boxH);
@@ -538,7 +512,6 @@ void pokerScreen::drawPlayer(cairo_t* cr, int w, int h,
     }
 }
 
-// ── Asynchronous Callback Bindings ────────────────────────────────────────
 void pokerScreen::onFoldClicked(GtkButton*, gpointer data) {
     auto* self = static_cast<pokerScreen*>(data);
     if (self->onFold) self->onFold();
@@ -561,7 +534,6 @@ void pokerScreen::onBetClicked(GtkButton*, gpointer data) {
 
 #ifdef TEST_POKER
 
-// Isolated structural blueprints to prevent engine header file conflicts
 struct TestPlayerInstance {
     int score;
     bool isStillActive;
@@ -586,20 +558,18 @@ int main(int argc, char* argv[]) {
     pokerScreen gameUI;
     gtk_container_add(GTK_CONTAINER(window), gameUI.getWidget());
 
-    // 1. Populate Sandbox Mock Data Structure
     TestGameEngineState mockData;
     mockData.potTotal = 750;
     mockData.minimumToCall = 150;
     mockData.dealerIndex = 0; 
-    mockData.actorTurnIndex = 1; // Highlight Player 2's turn
+    mockData.actorTurnIndex = 1; 
 
     mockData.seats = {
-        {3400, true},  // Player 1
-        {1850, true},  // Player 2
-        {900,  false}  // Player 3 (Folded)
+        {3400, true},  
+        {1850, true},  
+        {900,  false}  
     };
 
-    // 2. Map Sandbox Structures explicitly to GUI Vectors
     vector<playerInfo> finalPlayersList;
     for (size_t i = 0; i < mockData.seats.size(); ++i) {
         playerInfo uiSeat;
@@ -612,7 +582,6 @@ int main(int argc, char* argv[]) {
         finalPlayersList.push_back(uiSeat);
     }
 
-    // 3. Assemble Custom Display Cards
     vector<Card> communityBoard;
     Card board1, board2, board3;
     board1.rank = "10"; board1.suit = "♥"; board1.faceDown = false;
@@ -629,12 +598,10 @@ int main(int argc, char* argv[]) {
     privateHoleCards.push_back(hole1);
     privateHoleCards.push_back(hole2);
 
-    // 4. Hook IO Console logs for functional checks
     gameUI.onFold  = []() { cout << "[Sandbox Action Log]: FOLD intercepted!" << endl; };
     gameUI.onCheck = []() { cout << "[Sandbox Action Log]: CHECK/CALL intercepted!" << endl; };
     gameUI.onBet   = [](int val) { cout << "[Sandbox Action Log]: BET registration parsed for: $" << val << endl; };
 
-    // Push data package down UI pipelines
     gameUI.updateGameState(finalPlayersList, communityBoard, privateHoleCards, mockData.potTotal, mockData.minimumToCall, 2500);
     gameUI.setActions(true);
 
@@ -643,4 +610,4 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-#endif // TEST_POKER
+#endif
