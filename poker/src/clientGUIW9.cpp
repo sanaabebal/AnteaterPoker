@@ -970,6 +970,10 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
                 exit(0);
 
                 return;
+            } else if(newPlayerNumber != -1 && officialGameState.players.size() == 1){ // only player left in the game
+                printf("\n\nYOU HAVE WON THE GAME!  FINAL SCORE:  %d\n", officialGameState.players[0].score);
+                close(SocketFD);
+                exit(0);
             }
         }
 

@@ -13,6 +13,7 @@
 #include "cards.hpp"
 #include "data.hpp"
 #include "gamestate.hpp"
+#include "scoreCalc.hpp"
 
 
 // My functions
@@ -211,6 +212,8 @@ GAMESTATE startRound(GAMESTATE gameState){ // NOTE:  startRound() calls endRound
     }
     if(answer.numPlayers == 1){
         printf("One player is left, and they have won the game!");
+        answer.round = Preflop; // IMPORTANT FOR CLIENTS, WHICH ONLY CHECK IF THEY ARE OUT DURING THE PREFLOP FOR EFFICIENCY PURPOSES
+        answer.players[0].score += answer.pot;
         return answer;
     }
 
@@ -389,11 +392,59 @@ GAMESTATE riverUpdate(GAMESTATE gameState){
     }
     answer.callAmount = 0;
 
+    // Round update
+    answer.round = River;
+
     // Wrapup
     return answer;
 }
 
 GAMESTATE showdownUpdate(GAMESTATE gameState){
-    printf("Sorry, showDownUpdate() not implemented right now!\n");
-    return gameState;
+    // printf("Sorry, showDownUpdate() not implemented right now!\n");
+    GAMESTATE answer = gameState;
+
+    for(unsigned int i=0; i<answer.players.size(); i++){
+        answer.players[i].bet = 0;
+    }
+    answer.callAmount = 0;
+
+    // Round update
+    answer.round = Showdown;
+
+    // Calculating scores
+    std::vector<int> Scores;
+    int playerScoreAmount = 0;
+    for(unsigned int i=0; i<answer.players.size(); i++){
+        if(answer.players[i].isInHand == 0){ // skipping over players who folded
+            Scores.push_back(-1);
+            continue;
+        }
+
+        playerScoreAmount = scoreHand(answer.allCards, i);
+        Scores.push_back(playerScoreAmount);
+    }
+
+    // Determining winner(s)
+    std::vector<int> Winners;
+    Winners.push_back(0);
+    int highScore = Scores[0];
+    for(unsigned int i=1; i<Scores.size(); i++){
+        if(Scores[i] > highScore){
+            Winners.clear();
+            Winners.push_back(i);
+            highScore = Scores[i];
+        } else if(Scores[i] == highScore){
+            Winners.push_back(i);
+        }
+    }
+    // Splitting the pot
+    int numWinners = Winners.size();
+    for(unsigned int i=0; i<Winners.size(); i++){
+        answer.players[Winners[i]].score += answer.pot / numWinners;
+    }
+
+    // Resetting the pot
+    answer.pot = 0;
+
+    return answer;
 }

@@ -14,12 +14,13 @@
 #include <gtk/gtk.h>
 #include <assert.h>
 #include <math.h>
+#include <algorithm> // NEW
 
 
 #include "cards.hpp"
 #include "data.hpp"
 #include "DataTransfer.hpp"
-#include "gamestate.hpp" // FIX THIS!!!
+#include "gamestate.hpp"
 
 #define DEFAULT_PORT 10080
 
@@ -35,9 +36,14 @@ int Shutdown		/* keep running until Shutdown == 1 */
 	= 0;
 int gameStarted = 0; // used to track whether in login stage or gamestate stage
 
+#define MAX_PLAYERS 10
+
+std::vector<int> connectedClientSockets;
+
 // Adding these globally so they can be modified later
 GtkWidget *Window;
 GtkWidget *player[10];
+GtkWidget *scores[10];
 // Setup for official login information log and log of players; setup for official gamestate
 LOGININFO officialLoginInfo;
 GAMESTATE officialGameState;
@@ -105,7 +111,11 @@ GtkWidget *CreateWindow(	/* create the server window */
     player[8] = gtk_label_new("Player 9:  No player found yet.");
     player[9] = gtk_label_new("Player 10:  No player found yet.");
 
-    gtk_container_add(GTK_CONTAINER(VBox), playerH);
+    for(int i=0; i<MAX_PLAYERS; i++){
+        scores[i] = gtk_label_new("");
+    }
+
+    /* gtk_container_add(GTK_CONTAINER(VBox), playerH);
     gtk_container_add(GTK_CONTAINER(VBox), player[0]);
     gtk_container_add(GTK_CONTAINER(VBox), player[1]);
     gtk_container_add(GTK_CONTAINER(VBox), player[2]);
@@ -115,7 +125,12 @@ GtkWidget *CreateWindow(	/* create the server window */
     gtk_container_add(GTK_CONTAINER(VBox), player[6]);
     gtk_container_add(GTK_CONTAINER(VBox), player[7]);
     gtk_container_add(GTK_CONTAINER(VBox), player[8]);
-    gtk_container_add(GTK_CONTAINER(VBox), player[9]);
+    gtk_container_add(GTK_CONTAINER(VBox), player[9]); */
+
+    for(int i=0; i<MAX_PLAYERS; i++){
+        gtk_container_add(GTK_CONTAINER(VBox), player[i]);
+        gtk_container_add(GTK_CONTAINER(VBox), scores[i]);
+    }
 
 
     /* on the bottom, a button to shutdown the server and quit */
@@ -146,6 +161,17 @@ void UpdatePlayer(LOGININFO loginInfo, int playerSocket){
     }
     sprintf(text, "Player %d:  Name=%s, Socket Number Used=%d", n+1, loginInfo.playerName, playerSocket);
     gtk_label_set_text(GTK_LABEL(player[n]), text);
+
+}
+
+void UpdateScores(GAMESTATE gameState){
+    for(int i=0; i<officialGameState.numPlayers; i++){
+        char newText[100];
+        sprintf(newText, "  Score:  %d", officialGameState.players[i].score);
+        gtk_label_set_text(GTK_LABEL(scores[i]), newText);
+    }
+
+
 
 }
 
@@ -217,8 +243,8 @@ void MessageAllClients(){
     printf("MESSAGING ALL CLIENTS:  \n");
     officialGameState.PrintGameState();
 
-    for(unsigned int i=0; i<officialGameState.players.size(); i++){
-        clientSocket = officialGameState.players[i].playerSocket;
+    for(unsigned int i=0; i<connectedClientSockets.size(); i++){
+        clientSocket = connectedClientSockets[i];
 
         n = write(clientSocket, SendBuf.data(), SendBuf.size());
         if(n < 0){
@@ -235,7 +261,9 @@ void ProcessClientRequest(int DataSocketFD){
     n = read(DataSocketFD, RecvBuf.data(), RecvBuf.size());
         if (n < 0) 
         {   FatalError("reading from data socket failed");
-        } else if(n == 0){ // Client closed the connection
+        } else if(n == 0){ // Client closed the connection (e.g. if they were eliminated)
+            connectedClientSockets.erase(std::remove(connectedClientSockets.begin(), connectedClientSockets.end(), DataSocketFD), connectedClientSockets.end()); 
+                // (remove socket from connectedClientSockets)
             return;
         }
         RecvBuf.resize(n);
@@ -352,6 +380,7 @@ void ProcessGameStateRequest(int DataSocketFD, BUF RecvBuf){
                 // ZZZ:  MAY NEED TO FIX THIS IN LATER VERSIONS BY CALLING A ROUNDS LOOP INSTEAD...
                 #ifndef TESTING
                     officialGameState = startRound(officialGameState);
+                    UpdateScores(officialGameState);
                     MessageAllClients(); // send all clients copy of the initial, global officialGameState
 
                 #endif
@@ -366,6 +395,7 @@ void ProcessGameStateRequest(int DataSocketFD, BUF RecvBuf){
             officialGameState = updateGameState(gameState);
             // printf("NEW GAME STATE:  \n");
             // officialGameState.PrintGameState();
+            UpdateScores(officialGameState);
             MessageAllClients();
         }
     
@@ -389,6 +419,7 @@ void ServerMainLoop(		/* simple server main loop */
 
             FD_ZERO(&ActiveFDs);		/* set of active sockets */
             FD_SET(ServSocketFD, &ActiveFDs);	/* server socket is active */
+            
 
             #ifdef TESTING
                 officialLoginInfo.playerNum = 2;
@@ -424,6 +455,9 @@ void ServerMainLoop(		/* simple server main loop */
                         if (DataSocketFD < 0)
                         {   FatalError("data socket creation (accept) failed");
                         }
+                        // IMPORTANT:  Adding client to official messaging list
+                        connectedClientSockets.push_back(DataSocketFD);
+
                 #ifdef DEBUG
                             printf("%s: New client connected from %s:%hu.\n",
                                 Program,

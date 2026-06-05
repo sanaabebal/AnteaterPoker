@@ -4,6 +4,7 @@
 #define GAMESTATE_H
 
 #include "cards.hpp"
+#include "data.hpp"
 
 PILE oneShuffle(PILE deck);
 PILE shuffle(PILE deck);
