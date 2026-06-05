@@ -31,7 +31,7 @@ class pokerScreen {
 
         GtkWidget* getWidget();
 
-        void updateGameState( const vector<PlayerInfo>& players,
+        void updateGameState( const vector<playerInfo>& players,
                               const vector<Card>& communityCards,
                               const vector<Card>& holeCards,
                               int pot,
@@ -55,7 +55,7 @@ class pokerScreen {
         GtkWidget *betSpinButton;
         GtkWidget *tableDrawingArea;
 
-        vector<PlayerInfo> cachedPlayers;
+        vector<playerInfo> cachedPlayers;
         vector<Card> cachedCommunity;
         vector<Card> cachedHole;
 
@@ -71,9 +71,9 @@ class pokerScreen {
         void drawCard(cairo_t* cr, double x, double y, double cardW,
                       double cardH, const Card& card);
         void drawPlayer(cairo_t* cr, int w, int h, 
-                        const PlayerInfo& p, int seatIndex, int numSeats);
+                        const playerInfo& p, int seatIndex, int numSeats);
 
         static void onFoldClicked(GtkButton*, gpointer);
         static void onCheckClicked(GtkButton*, gpointer);
         static void onBetClicked(GtkButton*, gpointer);
-}
+};
