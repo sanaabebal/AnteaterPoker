@@ -185,6 +185,7 @@ GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify 
         answer.playerTurn = (answer.playerTurn == answer.numPlayers - 1) ? 0 : answer.playerTurn+1;
     } while(answer.players[answer.playerTurn].isInHand == 0);
     
+    
 
     // Case 1:  Going to the next round
     // ZZZ:  FIX THIS!  THIS DOES NOT WORK FOR CHECKING IN THE PREFLOP ROUND
@@ -259,7 +260,7 @@ GAMESTATE endRoundChecks(GAMESTATE gameState){ // determines hypothetetical "pre
             if(i == answer.dealerPlayer){
                 answer.dealerPlayer = (answer.dealerPlayer == 0) ? answer.numPlayers-2 : answer.dealerPlayer - 1; // "previous" dealer player
             }
-            if(i < answer.dealerPlayer){ // player before dealer was eliminated
+            else if(i < answer.dealerPlayer){ // player before dealer was eliminated
                 answer.dealerPlayer--;
             }
             answer.players[i].isEliminated = 1;
@@ -272,46 +273,69 @@ GAMESTATE endRoundChecks(GAMESTATE gameState){ // determines hypothetetical "pre
         return answer;
     }
 
-    
-    // Removing players who can't cover their blinds
-    int nextDealer = (answer.dealerPlayer == answer.numPlayers-1) ? 0 : answer.dealerPlayer + 1;
-    int smallBlindPlayer = (answer.dealerPlayer == answer.numPlayers-1) ? 0 : answer.dealerPlayer + 1;
-    int bigBlindPlayer = (smallBlindPlayer == answer.numPlayers-1) ? 0 : smallBlindPlayer + 1;
-
     if(answer.numPlayers == 2){
-        if(answer.players[0].score < 2){
+        int playerZeroBlind = (0 == answer.dealerPlayer) ? 2 : 1;
+        int playerOneBlind = (1 == answer.dealerPlayer) ? 2 : 1;
+        if(answer.players[0].score < playerZeroBlind){
             printf("Player 1 is eliminated!  Player 2 wins!\n");
             answer.players[0].isEliminated = 1;
             answer.players.erase(answer.players.begin() + 0);
             answer.numPlayers--;
-        } else if(answer.players[1].score < 2){
+            answer.players[0].playerNum = 0;
+            return answer;
+        } else if(answer.players[1].score < playerOneBlind){
             printf("Player 2 is eliminated!  Player 1 wins!\n");
             answer.players[1].isEliminated = 1;
             answer.players.erase(answer.players.begin() + 1);
             answer.numPlayers--;
+            answer.players[0].playerNum = 0;
+            return answer;
         }
     }
+
+    // Removing players who can't cover their blinds
+    int nextDealer = (answer.dealerPlayer == answer.numPlayers-1) ? 0 : answer.dealerPlayer + 1;
+    int smallBlindPlayer = (nextDealer == answer.numPlayers-1) ? 0 : nextDealer + 1;
+    int bigBlindPlayer = (smallBlindPlayer == answer.numPlayers-1) ? 0 : smallBlindPlayer + 1;
+
+    
     while(answer.numPlayers > 2 && answer.players[bigBlindPlayer].score < 2){
-        printf("Player %d does not have enough money to cover the big blind and has been eliminated.\n", bigBlindPlayer);
+        printf("Player %d does not have enough money to cover the big blind and has been eliminated.\n", bigBlindPlayer+1);
+        
+        
+        if(bigBlindPlayer == answer.dealerPlayer){
+                answer.dealerPlayer = (answer.dealerPlayer == 0) ? answer.numPlayers-2 : answer.dealerPlayer - 1; // "previous" dealer player
+        } else if(bigBlindPlayer < answer.dealerPlayer){
+            answer.dealerPlayer--;
+        }
+
         answer.players[bigBlindPlayer].isEliminated = 1;
         answer.players.erase(answer.players.begin() + bigBlindPlayer);
         answer.numPlayers--;
-        if(bigBlindPlayer < answer.dealerPlayer){
-            answer.dealerPlayer--;
-        }
-        bigBlindPlayer = (bigBlindPlayer == answer.numPlayers-1) ? 0 : bigBlindPlayer + 1;
+
+        nextDealer = (answer.dealerPlayer == answer.numPlayers-1) ? 0 : answer.dealerPlayer + 1;
+        smallBlindPlayer = (nextDealer == answer.numPlayers-1) ? 0 : nextDealer + 1;
+        bigBlindPlayer = (smallBlindPlayer == answer.numPlayers-1) ? 0 : smallBlindPlayer + 1;
+
+        // bigBlindPlayer = (bigBlindPlayer == answer.numPlayers-1) ? 0 : bigBlindPlayer + 1;
     }
     if(answer.numPlayers == 2){
-        if(answer.players[0].score < 2){
+        int playerZeroBlind = (0 == answer.dealerPlayer) ? 2 : 1;
+        int playerOneBlind = (1 == answer.dealerPlayer) ? 2 : 1;
+        if(answer.players[0].score < playerZeroBlind){
             printf("Player 1 is eliminated!  Player 2 wins!\n");
             answer.players[0].isEliminated = 1;
             answer.players.erase(answer.players.begin() + 0);
             answer.numPlayers--;
-        } else if(answer.players[1].score < 2){
+            answer.players[0].playerNum = 0;
+            return answer;
+        } else if(answer.players[1].score < playerOneBlind){
             printf("Player 2 is eliminated!  Player 1 wins!\n");
             answer.players[1].isEliminated = 1;
             answer.players.erase(answer.players.begin() + 1);
             answer.numPlayers--;
+            answer.players[0].playerNum = 0;
+            return answer;
         }
     }
     
@@ -339,9 +363,13 @@ GAMESTATE preflopUpdate(GAMESTATE gameState){
     // Handling player stats
     answer.players[smallBlindPlayer].bet = 1;
     answer.players[bigBlindPlayer].bet = 2;
-    answer.greatest = bigBlindPlayer;
+    // answer.greatest = bigBlindPlayer;
     answer.callAmount = 2;
     answer.playerTurn = (bigBlindPlayer == answer.numPlayers-1) ? 0 : bigBlindPlayer + 1;
+
+    // Handling "greatest" -- although technically the big blind is the greatest, we really want to treat it like the next player is the greatest--this will get fixed or ignored correctly, hopefully?
+    answer.greatest = answer.playerTurn;
+
 
     // Handling round
     answer.round = Preflop;
@@ -363,6 +391,15 @@ GAMESTATE flopUpdate(GAMESTATE gameState){
     // Handling round
     answer.round = Flop;
 
+    // Handling starting player -- player after the dealer
+    answer.playerTurn = (answer.dealerPlayer == answer.numPlayers-1) ? 0 : answer.dealerPlayer + 1;
+    while(answer.players[answer.playerTurn].isInHand == 0){
+        answer.playerTurn = (answer.playerTurn == answer.numPlayers-1) ? 0 : answer.playerTurn + 1;
+    }
+
+    // Setting greatest to default (current player)
+    answer.greatest = answer.playerTurn;
+
     // Wrapup
     return answer;
 }
@@ -378,6 +415,15 @@ GAMESTATE turnUpdate(GAMESTATE gameState){
 
     // Handling round
     answer.round = Turn;
+
+    // Handling starting player -- player after the dealer
+    answer.playerTurn = (answer.dealerPlayer == answer.numPlayers-1) ? 0 : answer.dealerPlayer + 1;
+    while(answer.players[answer.playerTurn].isInHand == 0){
+        answer.playerTurn = (answer.playerTurn == answer.numPlayers-1) ? 0 : answer.playerTurn + 1;
+    }
+
+    // Setting greatest to default (current player)
+    answer.greatest = answer.playerTurn;
 
     // Wrapup
     return answer;
@@ -395,6 +441,15 @@ GAMESTATE riverUpdate(GAMESTATE gameState){
     // Round update
     answer.round = River;
 
+    // Handling starting player -- player after the dealer
+    answer.playerTurn = (answer.dealerPlayer == answer.numPlayers-1) ? 0 : answer.dealerPlayer + 1;
+    while(answer.players[answer.playerTurn].isInHand == 0){
+        answer.playerTurn = (answer.playerTurn == answer.numPlayers-1) ? 0 : answer.playerTurn + 1;
+    }
+
+    // Setting greatest to default (current player)
+    answer.greatest = answer.playerTurn;
+
     // Wrapup
     return answer;
 }
@@ -402,6 +457,11 @@ GAMESTATE riverUpdate(GAMESTATE gameState){
 GAMESTATE showdownUpdate(GAMESTATE gameState){
     // printf("Sorry, showDownUpdate() not implemented right now!\n");
     GAMESTATE answer = gameState;
+
+    printf("\n\n====================SHOWDOWN====================\n");
+    printPiles(gameState.allCards);
+    printf("================================================\n\n");
+
 
     for(unsigned int i=0; i<answer.players.size(); i++){
         answer.players[i].bet = 0;

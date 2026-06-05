@@ -955,10 +955,10 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
 
     void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyNotTurn){
         // Updating player number based on possible eliminations
-        if(officialGameState.round == Preflop){
+        if(gameState.round == Preflop){
             int newPlayerNumber = -1;
-            for(unsigned int i=0; i<officialGameState.players.size(); i++){
-                if(officialGameState.players[i].playerSocket == officialPlayerSocket){
+            for(unsigned int i=0; i<gameState.players.size(); i++){
+                if(gameState.players[i].playerSocket == officialPlayerSocket){
                     playerLoginInfo.playerNum = i; // updating official record of player number
                     newPlayerNumber = i;
                     break;
@@ -986,6 +986,12 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
                 sprintf(description, "Player %d: %s\nPoints: %d\nBet: %d\nIn round: %s\nEliminated?: %s\n%s\n", i+1, player.name, player.score, player.bet, 
                     (player.isInHand) ? "yes" : "no", (player.isEliminated) ? "yes" : "no", (i == gameState.dealerPlayer) ? "DEALER" : "");
                 gtk_label_set_text(GTK_LABEL(gameWindow.playerIcons[i]), description);
+                gtk_widget_show(gameWindow.playerIcons[i]); // just in case it got hidden somewhere along the way
+            }
+            for(unsigned int i=gameState.players.size(); i < 10; i++){
+                if(gameWindow.playerIcons[i] != NULL){
+                    gtk_widget_hide(gameWindow.playerIcons[i]);
+                }
             }
 
         // Card entries
