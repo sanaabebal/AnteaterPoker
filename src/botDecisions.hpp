@@ -13,9 +13,9 @@ double calculateOdds(GAMESTATE gameState, int playerNum);
 int decideAction(GAMESTATE gameState, int playerNum);
 
 // returns amount that will be raised
-int getRaiseAmount(GAMESTATE gameState, int playerNum, double wr);
+int getRaiseAmount(GAMESTATE gameState, int playerNum);
 
 //handles bot bluffing
-int bluffing(GAMESTATE gameState, int playerNum, double wr);
+int bluffing(GAMESTATE gameState, int playerNum);
 
 #endif

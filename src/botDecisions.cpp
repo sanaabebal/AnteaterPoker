@@ -194,9 +194,11 @@ int decideAction(GAMESTATE gameState, int playerNum) {
 
 
 /* Determines the amount of points to raise by */
-int getRaiseAmount(GAMESTATE gameState, int playerNum, double wr, int isBluff) {
+int getRaiseAmount(GAMESTATE gameState, int playerNum) {
     int points = gameState.players[playerNum].score;
     int raiseAmount;
+    double wr = calcuateOdds(gameState, playerNum);
+    int isBluff = bluffing(gameState, playerNum);
 
     if(isBluff) raiseAmount = points/4;
     else if (wr >= 0.95) raiseAmount = points; // all in
@@ -211,11 +213,12 @@ int getRaiseAmount(GAMESTATE gameState, int playerNum, double wr, int isBluff) {
 }
 
 /*start of bluffing function*/
-int bluffing(GAMESTATE gameState, int playerNum, double wr){
+int bluffing(GAMESTATE gameState, int playerNum){
 
 	int rp = rand() %100;
 	int activeplayers = 0;
 	int aggressive = 0;
+	double wr = calculateOdds(gameState, playerNum);
 	
 	//checks how many players are active
 	for(int i = 0; i < gameState.numPlayers; i++){
