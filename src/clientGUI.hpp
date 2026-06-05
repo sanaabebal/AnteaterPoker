@@ -1,7 +1,12 @@
+#ifndef CLIENTGUI
+#define CLIENTGUI
+
 #pragma once
 #include <gtk/gtk.h>
 #include <memory>
 
+#include "cards.hpp"
+#include "data.hpp"
 #include "loginScreen.hpp"
 #include "hostScreen.hpp"
 #include "joinScreen.hpp"
@@ -70,3 +75,5 @@ private:
 
     static void onWindowDestroy(GtkWidget*, gpointer);
 };
+
+#endif

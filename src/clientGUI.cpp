@@ -1,7 +1,35 @@
+// clientGUI.cpp
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <gtk/gtk.h>
+#include <assert.h>
+
+#include "cards.hpp"
+#include "data.hpp"
+#include "DataTransfer.hpp"
 #include "clientGUI.hpp"
 #include <stdexcept>
 
+
+#define DEFAULT_SERVERPORT 10080
+#define DEFAULT_SERVERNAME "zuma"
+
+
 using namespace std;
+
+// global variables
+const char *Program = NULL;
+struct sockaddr_in ServerAddress;
+int SocketFD = 0;
+
+GAMESTATE officialGameState;
+LOGININFO playerLoginInfo;
+int officialPlayerSocket = 0;
 
 static const char* SCR_MAIN = "main_menu";
 static const char* SCR_HOST = "host";
@@ -23,6 +51,141 @@ const char* ClientGUI::screenName(ScreenID id) {
             return SCR_GAMEOVER;
     }
     return SCR_MAIN;
+}
+
+// global functionality -- all to do with communications with the server and client
+void FatalError(		/* printing out error diagnostics and abort */
+	const char *ErrorMsg)
+{
+    fputs(Program, stderr);
+    fputs(": ", stderr);
+    perror(ErrorMsg);
+    fputs(Program, stderr);
+    fputs(": Exiting!\n", stderr);
+    exit(20);
+}
+
+LOGININFO Talk2ServerLogin(LOGININFO loginInfo){	/* communicate with the server */
+    int n;
+
+    /* Creating buffer, sending it to server */
+    BUF RecvBuf(2000); /* message buffer for receiving a message -- think the max for login and game is well below 2000 bytes, but using this just in case */
+    BUF SendBuf; /* message buffer for sending a response */
+
+    SendBuf = createBuffer(loginInfo);
+    n = write(SocketFD, SendBuf.data(), SendBuf.size());
+    if (n < 0){   
+        FatalError("writing to socket failed");
+    }
+    
+    /* Getting response from server and closing the socket */
+    n = read(SocketFD, RecvBuf.data(), 2000);
+    if (n < 0) {   
+        FatalError("reading from socket failed");
+    }
+    RecvBuf.resize(n);
+
+    // Wrapup:  Getting new structure and returning it
+    loginInfo = parsingLoginArguments(RecvBuf);
+    return loginInfo;
+} /* end of Talk2Server */
+
+LOGININFO SendServerLogin(LOGININFO loginInfo){ // full process of sending LOGININFO structure to server and receiving confirmation; debugging printing included
+    LOGININFO loginInfo2 = loginInfo;
+    // For testing purposes
+    loginInfo.PrintLoginInfo(); // For testing purposes
+    printf("Players found:  ");
+    for(unsigned int i=0; i<loginInfo.playersFound.size(); i++){
+        printf("%d ", loginInfo.playersFound[i]);
+    }
+    printf("\n");
+
+    /* Sending login info to server (and receiving confirmation back) */
+    loginInfo2 = Talk2ServerLogin(loginInfo);
+
+    #ifdef DEBUG
+        loginInfo2.PrintLoginInfo();
+        printf("Players found:  ");
+        for(unsigned int i=0; i<loginInfo2.playersFound.size(); i++){
+            printf("%d ", loginInfo2.playersFound[i]);
+        }
+        printf("\n");
+
+        printf("Data has been sent to the server!\n");
+    #endif
+
+    return loginInfo2;
+
+}
+
+GAMESTATE Talk2ServerGameState(GAMESTATE gameState){
+    int n;
+
+    /* Creating buffer, sending it to server */
+    BUF RecvBuf(2000); /* message buffer for receiving a message -- think the max for login and game is well below 2000 bytes, but using this just in case */
+    BUF SendBuf; /* message buffer for sending a response */
+
+    SendBuf = createBuffer(gameState);
+    printf("Dummy game state:  \n");
+    officialGameState.PrintGameState();
+
+    n = write(SocketFD, SendBuf.data(), SendBuf.size());
+    if (n < 0){   
+        FatalError("writing to socket failed");
+    }
+    
+    /* Getting response from server and closing the socket */
+    n = read(SocketFD, RecvBuf.data(), 2000);
+    if (n < 0) {   
+        FatalError("reading from socket failed");
+    }
+    RecvBuf.resize(n);
+
+    // Wrapup:  Getting new structure and returning it
+
+    gameState = parsingGameArguments(RecvBuf);
+    return gameState;
+
+}
+
+GAMESTATE ServerGameStateRead(){
+    int n;
+    GAMESTATE gameState;
+
+    /* Creating buffer, sending it to server */
+    BUF RecvBuf(2000); /* message buffer for receiving a message -- think the max for login and game is well below 2000 bytes, but using this just in case */
+    BUF SendBuf; /* message buffer for sending a response */
+    
+    /* Getting response from server and closing the socket */
+    n = read(SocketFD, RecvBuf.data(), 2000);
+    if (n < 0) {   
+        FatalError("reading from socket failed");
+    }
+    RecvBuf.resize(n);
+
+    // Wrapup:  Getting new structure and returning it
+
+    gameState = parsingGameArguments(RecvBuf);
+    return gameState;
+}
+
+void ServerGameStateWrite(GAMESTATE gameState){
+    int n;
+
+    /* Creating buffer, sending it to server */
+    BUF RecvBuf(2000); /* message buffer for receiving a message -- think the max for login and game is well below 2000 bytes, but using this just in case */
+    BUF SendBuf; /* message buffer for sending a response */
+
+    SendBuf = createBuffer(gameState);
+    //printf("Dummy game state:  \n");
+    //officialGameState.PrintGameState();
+
+    n = write(SocketFD, SendBuf.data(), SendBuf.size());
+    if (n < 0){   
+        FatalError("writing to socket failed");
+    }
+    
+
 }
 
 ClientGUI::ClientGUI(int argc, char** argv) {
@@ -75,11 +238,9 @@ void ClientGUI::wireCallbacks() {
         show(ScreenID::Join);
     };
 
-    hostScreen->onInvite = [this](const string& user,
-                                   const string& pass,
-                                   int numPlayers) {
+    hostScreen->onInvite = [this](const string& username, const string& password, int numPlayers) {
         if (onHostInvite) {
-            onHostInvite(user, pass, numPlayers);
+            onHostInvite(username, password, numPlayers);
         }
     };
     hostScreen->onLaunch = [this]() {
@@ -92,9 +253,9 @@ void ClientGUI::wireCallbacks() {
         show(ScreenID::Login);
     };
 
-    joinScreen->onConfirmJoin = [this](const string& user, const string& pass, int slot) {
+    joinScreen->onConfirmJoin = [this](const string& username, const string& password, int slot) {
         if (onJoinConfirm){
-            onJoinConfirm(user, pass, slot);
+            onJoinConfirm(username, password, slot);
         }
         show(ScreenID::Poker);
     };
