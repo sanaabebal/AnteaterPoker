@@ -183,7 +183,7 @@ GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify 
     // Updating player turn (but skipping over players who have folded)
     do{
         answer.playerTurn = (answer.playerTurn == answer.numPlayers - 1) ? 0 : answer.playerTurn+1;
-    } while(answer.players[answer.playerTurn].isInHand == 0);
+    } while(answer.players[answer.playerTurn].isInHand == 0 || answer.players[answer.playerTurn].score == 0); // skipping players if they went all in
     
     
 
