@@ -44,6 +44,7 @@ class pokerScreen {
         function<void()> onFold;
         function<void()> onCheck;
         function<void(int)> onBet;
+        function<void()> onAllIn;
 
     private:
 
@@ -53,6 +54,7 @@ class pokerScreen {
         GtkWidget *checkButton;
         GtkWidget *betButton;
         GtkWidget *betSpinButton;
+        GtkWidget *allInButton;
         GtkWidget *tableDrawingArea;
 
         vector<playerInfo> cachedPlayers;
@@ -76,4 +78,5 @@ class pokerScreen {
         static void onFoldClicked(GtkButton*, gpointer);
         static void onCheckClicked(GtkButton*, gpointer);
         static void onBetClicked(GtkButton*, gpointer);
+        static void onAllInClicked(GtkButton*, gpointer);
 };

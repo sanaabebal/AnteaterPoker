@@ -1,154 +1,152 @@
-// clientGUI.cpp : Defines the entry point for the application.
-// Author: Sanaa Bebal
-/* Modifications:
-    06/02/26: Combining all code from beta version and my own work
-*/
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <gtk/gtk.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <iostream>
-#include <vector>
-#include <errno.h>
-
-#include "cards.hpp"
-#include "data.hpp"
-#include "DataTransfer.hpp"
 #include "clientGUI.hpp"
+#include <stdexcept>
 
 using namespace std;
 
-typedef struct clientWindow {
-    // everything that the client will be able to see and interact
-    // with at a certain point within the game
+static const char* SCR_MAIN = "main_menu";
+static const char* SCR_HOST = "host";
+static const char* SCR_JOIN = "join";
+static const char* SCR_GAME = "game";
+static const char* SCR_GAMEOVER = "game_over";
 
-    GtkWidget *mainDisplay;
-    GtkWidget *playerCards;
-    GtkWidget *communityCards;
-    GtkWidget *callButton;
-    GtkWidget *raiseButton;
-    GtkWidget *foldButton;
-    GtkWidget *raiseEntry;
-} clientWindow;
-
-
-// creating an instance of the struct
-
-clientWindow client;
-GAMESTATE officialGameState;
-LOGININFO playerLoginInfo;
-
-#define CARD_W 100
-#define CARD_H 150
-
-extern string mainDeckRef[4][13];
-
-// ensures that community and player related components are removed
-
-void clearContainers(GtkWidget *container){
-    GList* components = gtk_container_get_children(GTK_CONTAINER(container));
-    // loop to go through each components that is within a selected container
-    for (GList* i = components; i != NULL; i = g_list_next(i)){
-        // point to the data and destroy it
-        gtk_widget_destroy(GTK_WIDGET(i -> data));
+const char* ClientGUI::screenName(ScreenID id) {
+    switch (id) {
+        case ScreenID::Login:
+            return SCR_MAIN; 
+        case ScreenID::Host:
+            return SCR_HOST;
+        case ScreenID::Join:
+            return SCR_JOIN;
+        case ScreenID::Poker:
+            return SCR_GAME; 
+        case ScreenID::GameOver: 
+            return SCR_GAMEOVER;
     }
-    // ensure the freeing up of the memory
-    g_list_free(components);
+    return SCR_MAIN;
 }
 
-GtkWidget* createCard(const Card& card, bool visible){
-    // check if even visible to player, if not show the back of the card only
-    if (!visible){
-        return createScaledImage("assets/Back.png", CARD_W, CARD_H);
-    }
-
-    // special call for Anteater card as it doesn't exist within a specific folder
-
-    if (card.getSuit() == Anteaters || card.getValue() == Anteater){
-        return createScaledImage("assets/Anteater.png", CARD_W, CARD_H);
-    }
-
-    // else return back the specific card
-
-    return createScaledImage(mainDeckRef[card.getSuit()][card.getValue()].c_str(), CARD_W, CARD_H);
+ClientGUI::ClientGUI(int argc, char** argv) {
+    gtk_init(&argc, &argv);
+    buildWindow(argc, argv);
+    wireCallbacks();
 }
 
-void updateTable() {
-    // clear out anything before updating
-    clearContainers(client.playerCards);
-    clearContainers(client.communityCards);
+ClientGUI::~ClientGUI() {}
 
-    int num = playerLoginInfo.playerNum;
+void ClientGUI::run() {
+    gtk_widget_show_all(window);
+    gtk_stack_set_visible_child_name(GTK_STACK(stack), SCR_MAIN);
+    gtk_main();
+}
 
-    if (num >= 0 && num < (int)officialGameState.allCards.size()){
-        for (const auto& card: officialGameState.allCards[num]){
-            // will now show the card to the player
-            GtkWidget* image = createCard(card, true);
-            gtk_box_pack_start(GTK_BOX(client.communityCards), image, FALSE, FALSE, 5);
+void ClientGUI::show(ScreenID id) { 
+    gtk_stack_set_visible_child_name(GTK_STACK(stack), screenName(id));
+}
+
+void ClientGUI::buildWindow(int , char** ) {
+    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window), "Anteater Poker");
+    gtk_window_set_default_size(GTK_WINDOW(window), 640, 480);
+    gtk_window_set_resizable(GTK_WINDOW(window), TRUE);
+    g_signal_connect(window, "destroy", G_CALLBACK(onWindowDestroy), nullptr);
+
+    stack = gtk_stack_new();
+    gtk_stack_set_transition_type(GTK_STACK(stack), GTK_STACK_TRANSITION_TYPE_NONE);
+    gtk_container_add(GTK_CONTAINER(window), stack);
+
+    mainMenu = make_unique<loginScreen>();
+    hostScreen = make_unique<HostScreen>();
+    joinScreen = make_unique<JoinScreen>();
+    gameScreen = make_unique<pokerScreen>();
+    gameOverScreen = make_unique<GameOverScreen>();
+
+    gtk_stack_add_named(GTK_STACK(stack), mainMenu->getWidget(), SCR_MAIN);
+    gtk_stack_add_named(GTK_STACK(stack), hostScreen->getWidget(), SCR_HOST);
+    gtk_stack_add_named(GTK_STACK(stack), joinScreen->getWidget(), SCR_JOIN);
+    gtk_stack_add_named(GTK_STACK(stack), gameScreen->getWidget(), SCR_GAME);
+    gtk_stack_add_named(GTK_STACK(stack), gameOverScreen->getWidget(), SCR_GAMEOVER);
+}
+
+void ClientGUI::wireCallbacks() {
+    mainMenu->onHostGame = [this]() {
+        show(ScreenID::Host);
+    };
+    mainMenu->onJoinGame = [this]() {
+        show(ScreenID::Join);
+    };
+
+    hostScreen->onInvite = [this](const string& user,
+                                   const string& pass,
+                                   int numPlayers) {
+        if (onHostInvite) {
+            onHostInvite(user, pass, numPlayers);
         }
-    }
-
-    // human turn or not, to allow interactions on the screen
-
-    bool humanTurn = (officialGameState.playerTurn == num);
-    gtk_widget_set_sensitive(client.callButton, humanTurn);
-    gtk_widget_set_sensitive(client.raiseButton, humanTurn);
-    gtk_widget_set_sensitive(client.foldButton, humanTurn);
-
-    gtk_widget_show_all(client.mainDisplay);
-}
-
-// checking the channel continuously to not interrupt the GUI
-
-gboolean networkBuffer(gpointer inputData) {
-    BUF packetBuffer(4000);
-    int readBytes = read(SocketFD, packetBuffer.data(), 4000);
-
-    // checking if there's new information
-    if (readBytes < 0){
-        // skipping / moving on till the next cycle 
-        if (errno == EAGAIN || errno == EWOULDBLOCK){
-            return TRUE;
+    };
+    hostScreen->onLaunch = [this]() {
+        if (onHostLaunch) {
+            onHostLaunch();
         }
-        return FALSE;
-    }
-    // server has been closed
-    else if (readBytes == 0){
-        return FALSE;
-    }
-    
-    packetBuffer.resize(readBytes);
-    officialGameState = parsingGameArguments(packetBuffer);
+        show(ScreenID::Poker);
+    };
+    hostScreen->onLobby = [this]() {
+        show(ScreenID::Login);
+    };
 
-    // gamestate has changed therefore updates to the table must be made
-    updateTable();
-    return TRUE;
+    joinScreen->onConfirmJoin = [this](const string& user, const string& pass, int slot) {
+        if (onJoinConfirm){
+            onJoinConfirm(user, pass, slot);
+        }
+        show(ScreenID::Poker);
+    };
+
+    joinScreen->onLobby = [this]() {
+        show(ScreenID::Login);
+    };
+
+    gameScreen->onFold  = [this]() { if (onFold)  onFold(); };
+    gameScreen->onCheck = [this]() { if (onCheck) onCheck(); };
+    gameScreen->onBet   = [this](int amount) { if (onBet) onBet(amount); };
+
+    gameOverScreen->onPlayAgain = [this]() {
+        if (onPlayAgain) {
+            onPlayAgain();
+        }
+        show(ScreenID::Host);
+    };
+    gameOverScreen->onExitToLobby = [this]() {
+        if (onExitToLobby) {
+            onExitToLobby();
+        }
+        show(ScreenID::Login);
+    };
 }
 
-void callClicked(GtkWidget* button, gpointer inputData){
-
+void ClientGUI::updateHostPlayerList(const vector<RegisteredPlayer>& players, int maxPlayers) {
+    hostScreen->updatePlayerList(players, maxPlayers);
 }
 
-void foldClicked(GtkWidget* button, gpointer inputData){
-    
+void ClientGUI::updateJoinPlayerList(const vector<string>& names, const vector<int>& slots, int maxPlayers) {
+    joinScreen->updatePlayerList(names, slots, maxPlayers);
 }
 
+void ClientGUI::setAvailableSlots(const vector<int>& slots) { 
+    joinScreen->setAvailableSlots(slots);
+}
 
+void ClientGUI::updateGameState(const vector<PlayerInfo>& players, const vector<Card>& community,
+                                 const vector<Card>& hole, int pot, int currentBet, int localStack) {
+    gameScreen->updateGameState(players, community, hole, pot, currentBet, localStack);
+}
 
-// main() execution
-int main(int argc, char *argv[]){
-    gtk_init(argc, &argv);
+void ClientGUI::setGameActions(bool enabled) { 
+    gameScreen->setActions(enabled);
+}
 
-    // need to establish the network SocketFD connection bc of the login
+void ClientGUI::setResults(const vector<FinalPlayerResult>& results, const SessionSummary& summary) {
+    gameOverScreen->setResults(results, summary);
+    show(ScreenID::GameOver);
+}
 
-    // creating the window
-
-    // displaying everything for the user
-
-    // pull packets of information every 100 ms
-
-    // giving control to loop
-
+void ClientGUI::onWindowDestroy(GtkWidget*, gpointer) {
+    gtk_main_quit();
 }

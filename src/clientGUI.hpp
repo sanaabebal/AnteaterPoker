@@ -1,60 +1,72 @@
-/* clientGUI.hpp */
-
 #pragma once
-
 #include <gtk/gtk.h>
+#include <memory>
 
-#include "data.hpp"
 #include "loginScreen.hpp"
 #include "hostScreen.hpp"
-#include "playerScreen.hpp"
+#include "joinScreen.hpp"
+#include "pokerScreen.hpp"
+#include "gameOverScreen.hpp"
+
+using namespace std;
+
+enum class ScreenID {
+    Login,
+    Host,
+    Join,
+    Poker,
+    GameOver
+};
 
 class ClientGUI {
-    public:
-        ClientGUI(int argc, char** argv);
+public:
+    ClientGUI(int argc, char** argv);
+    ~ClientGUI();
 
-        int run();
-    
-    private:
-        GtkApplication* app;
-        GtkApplication* window;
-        
-        
-        GtkWidget* stack;
+    void run();
 
-        GtkWidget* playerCards;
-        GtkWidget* communityCards;
+    void show(ScreenID id);
 
-        GtkWidget* callButton;
-        GtkWidget* raiseButton;
-        GtkWidget* foldButton;
+    void updateHostPlayerList(const vector<RegisteredPlayer>& players, int maxPlayers);
+    void updateJoinPlayerList(const vector<string>& names,
+                              const vector<int>& slots, int maxPlayers);
+    void setAvailableSlots(const vector<int>& slots);
+    void updateGameState(const vector<PlayerInfo>& players,
+                         const vector<Card>& community,
+                         const vector<Card>& hole,
+                         int pot, int currentBet, int localStack);
+    void setGameActions(bool enabled);
+    void setResults(const vector<FinalPlayerResult>& results,
+                            const SessionSummary& summary);
 
-        GtkWidget* raiseEntry;
 
-        GAMESTATE officialGameState;
-        LOGININFO playerLoginInfo;
+    function<void(const string& username,
+                       const string& password,
+                       int numPlayers)> onHostInvite;
+    function<void()> onHostLaunch;
+    function<void(const string& username,
+                       const string& password,
+                       int slot)> onJoinConfirm;
+    function<void()> onFold;
+    function<void()> onCheck;
+    function<void(int amount)> onBet;
+    function<void()> onPlayAgain;
+    function<void()> onExitToLobby;
 
-        ClientNetworth* network;
+private:
+    GtkWidget* window;
+    GtkWidget* stack;   
 
-        static void raiseClicked (
-                GtkWidget* widget,
-                gpointer data
-        );
+    unique_ptr<loginScreen> mainMenu;
+    unique_ptr<HostScreen> hostScreen;
+    unique_ptr<JoinScreen> joinScreen;
+    unique_ptr<PokerScreen> gameScreen;
+    unique_ptr<GameOverScreen> gameOverScreen;
 
-        static void foldClicked (
-                GtkWidget* widget,
-                gpointer data
-        );
+    void buildWindow(int argc, char** argv);
+    void wireCallbacks();
 
-        void buildGUI();
-        void updateTable();
+    static const char* screenName(ScreenID id);
 
-        void clearContainers(
-            GtkWidget* container
-        );
-
-        GtkWidget* createCard (
-            const Card& card,
-            bool visible
-        );
+    static void onWindowDestroy(GtkWidget*, gpointer);
 };

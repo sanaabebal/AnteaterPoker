@@ -35,7 +35,11 @@ static const char* GAME_CSS = R"CSS(
     padding: 10px 32px;
     min-width: 120px;
 }
-.gs-fold-btn:hover { background-color: #3a7a3a; }
+
+.gs-fold-btn:hover { 
+    background-color: #3a7a3a; 
+}
+
 .gs-check-btn {
     background-color: #2e5c2e;
     color: #f5ecc8;
@@ -68,6 +72,21 @@ static const char* GAME_CSS = R"CSS(
     border: 1px solid #3a6a68;
     min-width: 70px;
 }
+.gs-allin-btn {
+    background-color: #2e5c2e;
+    color: #f5ecc8;
+    font-family: "Georgia", serif;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    border: 2px solid #1a3a1a;
+    padding: 10px 32px;
+    min-width: 120px;
+}
+.gs-allin-btn:hover { 
+    background-color: #3a7a3a; 
+}
+
 )CSS";
 
 static string resolveAsset(const string& relativePath) {
@@ -204,6 +223,13 @@ void pokerScreen::buildUI() {
     gtk_widget_set_size_request(betButton, 60, -1);
     gtk_box_pack_start(GTK_BOX(betBox), betButton, FALSE, FALSE, 0);
     g_signal_connect(betButton, "clicked", G_CALLBACK(onBetClicked), this);
+
+    allInButton = gtk_button_new_with_label("ALL IN");
+    gtk_widget_set_name(allInButton, "gs-allin-btn");
+    gtk_widget_set_size_request(allInButton, 60, -1);
+    gtk_box_pack_start(GTK_BOX(actionBar), allInButton, FALSE, FALSE, 0);
+    g_signal_connect(allInButton, "clicked", G_CALLBACK(onAllInClicked), this);
+
 }
 
 void pokerScreen::applyStyles() {
@@ -420,7 +446,7 @@ void pokerScreen::drawCard(cairo_t* cr, double x, double y,
         int cropH = maxY - minY + 1;
         croppedPixbuf = gdk_pixbuf_new_subpixbuf(pixbuf, minX, minY, cropW, cropH);
     } else {
-        croppedPixbuf = g_object_ref(pixbuf); // Fallback to full image
+        croppedPixbuf = g_object_ref(pixbuf); // rely on the full image
     }
 
     GdkPixbuf* scaledPixbuf = gdk_pixbuf_scale_simple(
@@ -498,7 +524,7 @@ void pokerScreen::drawPlayer(cairo_t* cr, int w, int h,
     cairo_show_text(cr, stackStr.str().c_str());
 
     if (p.status == "Folded") {
-        setRGBA(cr, 0.05, 0.05, 0.05, 0.75); // Darken card profile
+        setRGBA(cr, 0.05, 0.05, 0.05, 0.75); 
         cairo_rectangle(cr, bx, by, boxW, boxH);
         cairo_fill(cr);
         
@@ -514,12 +540,16 @@ void pokerScreen::drawPlayer(cairo_t* cr, int w, int h,
 
 void pokerScreen::onFoldClicked(GtkButton*, gpointer data) {
     auto* self = static_cast<pokerScreen*>(data);
-    if (self->onFold) self->onFold();
+    if (self->onFold) {
+        self->onFold();
+    }
 }
 
 void pokerScreen::onCheckClicked(GtkButton*, gpointer data) {
     auto* self = static_cast<pokerScreen*>(data);
-    if (self->onCheck) self->onCheck();
+    if (self->onCheck) {
+        self->onCheck();
+    }
 }
 
 void pokerScreen::onBetClicked(GtkButton*, gpointer data) {
@@ -529,6 +559,13 @@ void pokerScreen::onBetClicked(GtkButton*, gpointer data) {
     }
     int amount = (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(self->betSpinButton));
     self->onBet(amount);
+}
+
+void pokerScreen::onAllInClicked(GtkButton*, gpointer data) {
+    auto* self = static_cast<pokerScreen*>(data);
+    if (self->onAllIn) {
+        self->onAllIn();
+    }
 }
 
 
@@ -598,9 +635,10 @@ int main(int argc, char* argv[]) {
     privateHoleCards.push_back(hole1);
     privateHoleCards.push_back(hole2);
 
-    gameUI.onFold  = []() { cout << "[Sandbox Action Log]: FOLD intercepted!" << endl; };
-    gameUI.onCheck = []() { cout << "[Sandbox Action Log]: CHECK/CALL intercepted!" << endl; };
+    gameUI.onFold  = []() { cout << "[Sandbox Action Log]: FOLD was pressed!" << endl; };
+    gameUI.onCheck = []() { cout << "[Sandbox Action Log]: CHECK/CALL was pressed!" << endl; };
     gameUI.onBet   = [](int val) { cout << "[Sandbox Action Log]: BET registration parsed for: $" << val << endl; };
+    gameUI.onAllIn = []() { cout << "[Sandbox Action Log]: ALL IN was pressed!" << endl};
 
     gameUI.updateGameState(finalPlayersList, communityBoard, privateHoleCards, mockData.potTotal, mockData.minimumToCall, 2500);
     gameUI.setActions(true);
