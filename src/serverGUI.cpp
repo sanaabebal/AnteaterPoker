@@ -22,7 +22,8 @@
 #include "cards.hpp"
 #include "data.hpp"
 #include "DataTransfer.hpp"
-#include "stubFunctionsW9.hpp" // FIX THIS!!!
+
+using namespace std;
 
 #define DEFAULT_PORT 10080
 
@@ -84,9 +85,7 @@ void activePlayers(int totalSeats) {
 
 
 // NEW:  CreateWindow (took old code and modified it to display the desired output)
-GtkWidget *CreateWindow(	/* create the server window */
-	int *argc,
-	char **argv[])
+GtkWidget *CreateWindow (int *argc, char **argv[])
 {
     //GtkWidget *Window;
 
@@ -97,7 +96,7 @@ GtkWidget *CreateWindow(	/* create the server window */
     GtkStyleContext *Context;
 
     // Player information:  Holds player name, socket int if found; otherwise, returns 
-    //GtkWidget *playerH, *player1, *player2, *player3, *player4, *player5, *player6, *player7, *player8, *player9, *player10;
+    //GtkWidget *playerH, *player1, *player2, *player3, *player4, *player5, *player6, *player7, *player8, *player9;
 
     
     /* initialize the GTK libraries */
@@ -114,12 +113,13 @@ GtkWidget *CreateWindow(	/* create the server window */
 
     Provider = gtk_css_provider_new();
     gtk_css_provider_load_from_data(Provider,
-        "window {}\n"
+        "window, .main-window {background-color : #2b4c54;}\n"
+        "background {background-color: #2b4c54}\n"
         "label {}\n"
         ".header-label {}\n"
         ".player-card {}\n"
-        "button {}\n"
-        "button:hover {}\n", 
+        "button { border: 2px solid #a08040; }\n"
+        "button:hover { background-color: #f0e6b8; border-color: #c0a050;}\n", 
         -1, NULL );
     
     Context = gtk_widget_get_style_context(Window);
@@ -187,6 +187,7 @@ GtkWidget *CreateWindow(	/* create the server window */
 // NEW:  UpdatePlayer (completely new code)
 void UpdatePlayer(LOGININFO loginInfo, int playerSocket){
     char text[200];
+
     int n = loginInfo.playerNum;
     if(n < 0 || n >= 10){
         printf("ERROR:  Tried to update player, but player number is out of range.\n");
@@ -257,7 +258,7 @@ int MakeServerSocket(		/* create a socket on this server */
 
 
 void MessageAllClients(){
-    ssize_t n;
+    streamsize n;
     BUF SendBuf;
     int clientSocket;
 
@@ -276,7 +277,7 @@ void MessageAllClients(){
 
 int ProcessClientRequest(int DataSocketFD){
     BUF RecvBuf(2000); /* message buffer for receiving a message -- think the max for login and game is well below 2000 bytes, but using this just in case */
-    ssize_t n = 0;
+    streamsize n = 0;
 
     n = read(DataSocketFD, RecvBuf.data(), RecvBuf.size());
         if (n < 0) 
@@ -307,7 +308,7 @@ void ProcessLoginRequest(		/* process a LOGININFO request by a client --user wil
 	int DataSocketFD, BUF RecvBuf)
 {
         static int foundHost = 0;
-        ssize_t n = 0;
+        streamsize n = 0;
         
         BUF SendBuf; /* message buffer for sending a response */
     
@@ -371,7 +372,7 @@ void ProcessLoginRequest(		/* process a LOGININFO request by a client --user wil
 } /* end of ProcessRequest */
 
 void ProcessGameStateRequest(int DataSocketFD, BUF RecvBuf){
-     ssize_t n = 0;
+     streamsize n = 0;
         
         BUF SendBuf; /* message buffer for sending a response */
         
@@ -401,6 +402,7 @@ void ProcessGameStateRequest(int DataSocketFD, BUF RecvBuf){
                 officialGameState.players = players;
 
                 // ZZZ:  MAY NEED TO FIX THIS IN LATER VERSIONS BY CALLING A ROUNDS LOOP INSTEAD...
+                /*
                 #ifndef TESTING
                     PILE deck = refDeck;
                     for(int i=0; i<7; i++){
@@ -410,6 +412,7 @@ void ProcessGameStateRequest(int DataSocketFD, BUF RecvBuf){
                     MessageAllClients(); // send all clients copy of the initial, global officialGameState
 
                 #endif
+                */
 
                 
 
@@ -528,7 +531,7 @@ int main(			/* the main function */
 
     int ServSocketFD;	/* socket file descriptor for service */
     int PortNo;		/* port number */
-    GtkWidget *Window;	/* the server window */
+    //GtkWidget *Window;	/* the server window */
 
     Program = argv[0];	/* publish program name (for diagnostics) */
     #ifdef DEBUG

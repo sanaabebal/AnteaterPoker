@@ -4,13 +4,11 @@
 #include <functional>
 #include <vector>
 #include <string>
+#include "data.hpp"
+#include "cards.hpp"
 
 using namespace std;
 
-struct RegisteredPlayer {
-    string name;
-    int slot;
-};
 
 class joinScreen {
     public:
@@ -19,14 +17,11 @@ class joinScreen {
 
         GtkWidget* getWidget();
 
-        void playerList(const vector<RegisteredPlayer>& players,
-                        int maxPlayers);
+        void playerList(const vector<PLAYER>& players, int maxPlayers);
 
         void openSlots(const vector<int>& slots);
 
-        function<void(const string& username,
-                    const string& password,
-                    int slot)> onConfirmedJoin;
+        function<void(const string& username, const string& password, int slot)> onConfirmedJoin;
         
         function<void()> onLobby;
     private:

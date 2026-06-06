@@ -6,15 +6,17 @@
 #include <string.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <stdexcept>
 #include <gtk/gtk.h>
 #include <assert.h>
+#include <vector>
+#include <string>
+#include <memory>
 
 #include "cards.hpp"
 #include "data.hpp"
 #include "DataTransfer.hpp"
 #include "clientGUI.hpp"
-#include <stdexcept>
-
 
 #define DEFAULT_SERVERPORT 10080
 #define DEFAULT_SERVERNAME "zuma"
@@ -217,97 +219,259 @@ void ClientGUI::buildWindow(int , char** ) {
     gtk_stack_set_transition_type(GTK_STACK(stack), GTK_STACK_TRANSITION_TYPE_NONE);
     gtk_container_add(GTK_CONTAINER(window), stack);
 
-    mainMenu = make_unique<loginScreen>();
-    hostScreen = make_unique<HostScreen>();
-    joinScreen = make_unique<JoinScreen>();
-    gameScreen = make_unique<pokerScreen>();
-    gameOverScreen = make_unique<GameOverScreen>();
+    loginScreenObject = make_unique<loginScreen>();
+    hostScreenObject = make_unique<hostScreen>();
+    joinScreenObject = make_unique<joinScreen>();
+    pokerScreenObject = make_unique<pokerScreen>();
+    gameOverScreenObject = make_unique<gameOverScreen>();
 
-    gtk_stack_add_named(GTK_STACK(stack), mainMenu->getWidget(), SCR_MAIN);
-    gtk_stack_add_named(GTK_STACK(stack), hostScreen->getWidget(), SCR_HOST);
-    gtk_stack_add_named(GTK_STACK(stack), joinScreen->getWidget(), SCR_JOIN);
-    gtk_stack_add_named(GTK_STACK(stack), gameScreen->getWidget(), SCR_GAME);
-    gtk_stack_add_named(GTK_STACK(stack), gameOverScreen->getWidget(), SCR_GAMEOVER);
+    gtk_stack_add_named(GTK_STACK(stack), loginScreenObject->getWidget(), SCR_MAIN);
+    gtk_stack_add_named(GTK_STACK(stack), hostScreenObject->getWidget(), SCR_HOST);
+    gtk_stack_add_named(GTK_STACK(stack), joinScreenObject->getWidget(), SCR_JOIN);
+    gtk_stack_add_named(GTK_STACK(stack), pokerScreenObject->getWidget(), SCR_GAME);
+    gtk_stack_add_named(GTK_STACK(stack), gameOverScreenObject->getWidget(), SCR_GAMEOVER);
 }
 
 void ClientGUI::wireCallbacks() {
-    mainMenu->onHostGame = [this]() {
+    loginScreenObject->onHostGame = [this]() {
         show(ScreenID::Host);
     };
-    mainMenu->onJoinGame = [this]() {
+    loginScreenObject->onPlayerGame = [this]() {
         show(ScreenID::Join);
     };
 
-    hostScreen->onInvite = [this](const string& username, const string& password, int numPlayers) {
+    hostScreenObject->onInvite = [this](const string& username, const string& password, int numPlayers) {
         if (onHostInvite) {
             onHostInvite(username, password, numPlayers);
         }
     };
-    hostScreen->onLaunch = [this]() {
+    hostScreenObject->onLaunch = [this]() {
         if (onHostLaunch) {
             onHostLaunch();
         }
         show(ScreenID::Poker);
     };
-    hostScreen->onLobby = [this]() {
+    hostScreenObject->onLobby = [this]() {
         show(ScreenID::Login);
     };
 
-    joinScreen->onConfirmJoin = [this](const string& username, const string& password, int slot) {
+    /*
+    joinScreenObject->onConfirmedJoin = [this](const string& username, const string& password, int slot) {
+        // ZZZ: NOT SURE YET
         if (onJoinConfirm){
             onJoinConfirm(username, password, slot);
         }
         show(ScreenID::Poker);
     };
 
-    joinScreen->onLobby = [this]() {
+    joinScreenObject->onLobby = [this]() {
         show(ScreenID::Login);
     };
 
-    gameScreen->onFold  = [this]() { if (onFold)  onFold(); };
-    gameScreen->onCheck = [this]() { if (onCheck) onCheck(); };
-    gameScreen->onBet   = [this](int amount) { if (onBet) onBet(amount); };
+    pokerScreenObject->onFold = [this]() {
+        sendPlayerActionToServer(SocketFD, ACTION_FOLD, 0);
+        if (onFold) {
+            onFold();
+        }
+    };
 
-    gameOverScreen->onPlayAgain = [this]() {
+    // ZZZ: CHECK THIS
+    pokerScreenObject->onCheck = [this]() {
+        sendPlayerActionToServer(SocketFD, ACTION_CHECK, 0);
+        if (onCheck) {
+            onCheck();
+        }
+    };
+
+    pokerScreenObject->onBet = [this](int amount) {
+        sendPlayerActionToServer(SocketFD, ACTION_BET, amount);
+        if (onBet){
+            onBet(amount);
+        }
+    };
+
+    pokerScreenObject->onAllIn = [this]{
+        sendPlayerActionToServer(SocketFD, ACTION_ALLIN, 0);
+
+        if (onAllIn){
+            onAllIn();
+        }
+    };
+
+    gameOverScreenObject->onPlayAgain = [this]() {
         if (onPlayAgain) {
             onPlayAgain();
         }
         show(ScreenID::Host);
     };
-    gameOverScreen->onExitToLobby = [this]() {
+
+    gameOverScreenObject->onExitToLobby = [this]() {
         if (onExitToLobby) {
             onExitToLobby();
         }
         show(ScreenID::Login);
     };
+    */
+
+    pokerScreenObject -> onFold = [this]() {
+        int turn = officialGameState.playerTurn;
+        if (turn >= 0 && turn < (int)officialGameState.players.size()) {
+            officialGameState.players[turn].isInHand = 0; // player has folded
+            officialGameState.players[turn].bet = Fold; // -1 from within data.hpp
+
+        }
+        ServerGameStateWrite(officialGameState);
+        if (onFold){
+            onFold();
+        }
+    };
+
+    pokerScreenObject->onCheck = [this](){
+        int turn = officialGameState.playerTurn;
+        if(turn >= 0 && turn < (int)officialGameState.players.size()){
+            officialGameState.players[turn].bet = Check; // 0 from within data.hpp
+
+        }
+        ServerGameStateWrite(officialGameState);
+        if (onCheck) {
+            onCheck();
+        }
+    };
+
+    pokerScreenObject->onBet = [this](int amount) {
+        int turn = officialGameState.playerTurn;
+        if (turn >= 0 && turn < (int)officialGameState.players.size()){
+            officialGameState.players[turn].bet = amount;
+            if (officialGameState.players[turn].score >= amount) {
+                officialGameState.players[turn].score -= amount;
+                officialGameState.pot += amount;
+            }
+        }
+        ServerGameStateWrite(officialGameState);
+        if (onBet) {
+            onBet(amount);
+        }
+    };
+
+    pokerScreenObject->onAllIn = [this]{
+        int turn = officialGameState.playerTurn;
+        if(turn >= 0 && turn < (int)officialGameState.players.size()){
+            int remainStack = officialGameState.players[turn].score;
+            officialGameState.players[turn].bet += remainStack;
+            officialGameState.pot += remainStack;
+            officialGameState.players[turn].score = 0;
+        }
+        ServerGameStateWrite(officialGameState);
+        if (onAllIn) {
+            onAllIn();
+        }
+    };
+
+    gameOverScreenObject->onPlayAgain = [this]() {
+        if(onPlayAgain) {
+            onPlayAgain();
+        }
+        show(ScreenID::Host);
+    };
+
+    gameOverScreenObject->onExitToLobby = [this]() {
+        if(onExitToLobby) {
+            onExitToLobby();
+        }
+        show(ScreenID::Login);
+    };
+
+} 
+
+void ClientGUI::updateHostPlayerList(const vector<PLAYER>& players, int maxPlayers) {
+    hostScreenObject->playerList(players, maxPlayers);
 }
 
-void ClientGUI::updateHostPlayerList(const vector<RegisteredPlayer>& players, int maxPlayers) {
-    hostScreen->updatePlayerList(players, maxPlayers);
-}
-
-void ClientGUI::updateJoinPlayerList(const vector<string>& names, const vector<int>& slots, int maxPlayers) {
-    joinScreen->updatePlayerList(names, slots, maxPlayers);
+void ClientGUI::updateJoinPlayerList(const vector<PLAYER>& names, int maxPlayers) {
+    joinScreenObject->playerList(names, maxPlayers);
 }
 
 void ClientGUI::setAvailableSlots(const vector<int>& slots) { 
-    joinScreen->setAvailableSlots(slots);
+    // changed to match joinScreen calling
+    joinScreenObject->openSlots(slots);
 }
 
-void ClientGUI::updateGameState(const vector<PlayerInfo>& players, const vector<Card>& community,
+void ClientGUI::updateGameState(const vector<PLAYER>& players, const vector<Card>& community,
                                  const vector<Card>& hole, int pot, int currentBet, int localStack) {
-    gameScreen->updateGameState(players, community, hole, pot, currentBet, localStack);
+    pokerScreenObject->updateGameState(players, community, hole, pot, currentBet, localStack);
 }
 
 void ClientGUI::setGameActions(bool enabled) { 
-    gameScreen->setActions(enabled);
+    pokerScreenObject->setActions(enabled);
 }
 
-void ClientGUI::setResults(const vector<FinalPlayerResult>& results, const SessionSummary& summary) {
-    gameOverScreen->setResults(results, summary);
+void ClientGUI::setResults(const vector<PLAYER>& results, const GAMESTATE& summary) {
+    gameOverScreenObject->setResults(results, summary);
     show(ScreenID::GameOver);
 }
 
 void ClientGUI::onWindowDestroy(GtkWidget*, gpointer) {
     gtk_main_quit();
+}
+
+
+/* MAIN FUNCTION */
+int main(int argc, char *argv[]){
+    int PortNo;
+    struct hostent *Server;
+
+    Program = argv[0];
+
+    if (argc < 3){  
+
+        char actualServer[100];
+        printf("Before starting the login menu, please specify where the server actually is (e.g. an IP address; \'bondi\'; etc):  ");
+        scanf(" %s", actualServer);
+
+        Server = gethostbyname(actualServer);
+        PortNo = DEFAULT_SERVERPORT;
+        
+    } else{ 
+        Server = gethostbyname(argv[1]);
+        PortNo = atoi(argv[2]);
+    }
+
+
+    if (Server == NULL)
+    {   fprintf(stderr, "%s: no such host named '%s'\n", Program, argv[1]);
+        exit(10);
+    }
+
+    if (PortNo <= 2000)
+    {   fprintf(stderr, "%s: invalid port number %d, should be >2000\n",
+		Program, PortNo);
+        exit(10);
+    }
+    ServerAddress.sin_family = AF_INET;
+    ServerAddress.sin_port = htons(PortNo);
+    ServerAddress.sin_addr = *(struct in_addr*)Server->h_addr_list[0];
+
+
+    /* Connecting to Server*/
+    SocketFD = socket(AF_INET, SOCK_STREAM, 0);
+    if (SocketFD < 0){   
+        FatalError("socket creation failed");
+    }
+    if (connect(SocketFD, (struct sockaddr*)&ServerAddress,
+            sizeof(struct sockaddr_in)) < 0){   
+                FatalError("connecting to server failed");
+    }
+
+    /* LOGIN MENU 
+    LOGININFO loginInfo;
+    loginInfo = Talk2ServerLogin(loginInfo);
+    MainMenu(&argc, &argv, loginInfo);
+    */
+
+    ClientGUI app(argc, argv);
+    app.run();
+
+    // Wrapup
+    close(SocketFD);
+    return 0;    
 }

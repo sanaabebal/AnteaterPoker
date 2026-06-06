@@ -235,7 +235,7 @@ void joinScreen::applyStyles() {
     g_object_unref(provider);
 }
 
-void joinScreen::playerList(const vector<RegisteredPlayer>& players, int maxPlayers) {
+void joinScreen::playerList(const vector<PLAYER>& players, int maxPlayers) {
     GList *rows = gtk_container_get_children(GTK_CONTAINER(listBox));
     for (GList* i = rows; i; i = i -> next) {
         gtk_widget_destroy(GTK_WIDGET(i -> data));
@@ -254,7 +254,7 @@ void joinScreen::playerList(const vector<RegisteredPlayer>& players, int maxPlay
         };
 
         gtk_box_pack_start(GTK_BOX(row), cell(p.name, 100), FALSE, FALSE, 0);
-        gtk_box_pack_start(GTK_BOX(row), cell(to_string(p.slot), 60), FALSE, FALSE, 0);
+        gtk_box_pack_start(GTK_BOX(row), cell(to_string(p.playerNum), 60), FALSE, FALSE, 0);
         gtk_box_pack_start(GTK_BOX(row), cell("✓", 60), FALSE, FALSE, 0);
 
         GtkWidget *listRow = gtk_list_box_row_new();
@@ -293,6 +293,24 @@ void joinScreen::onConfirmedJoinClicked(GtkButton*, gpointer inputData) {
         g_free(activeText);
     }
 
+    LOGININFO playerLoginInfo;
+
+    // Additional logic needed for merging
+    strncpy(playerLoginInfo.playerName, user.c_str(), sizeof(playerLoginInfo.playerName) -1);
+    strncpy(playerLoginInfo.password, pass.c_str(), sizeof(playerLoginInfo.password)-1);
+    playerLoginInfo.playerNum = selectedSlot;
+    playerLoginInfo.playerType = Human;
+
+    if (selectedSlot >= 0){
+        if ((size_t)selectedSlot >= playerLoginInfo.playersFound.size()) {
+            playerLoginInfo.playersFound[selectedSlot] = 1;
+        }
+
+        playerLoginInfo.playersFound[selectedSlot] = 1;
+    }
+
+    //if (!self -> onConfirmedJoin) return;
+    
     self->onConfirmedJoin(user, pass, selectedSlot);
 }
 

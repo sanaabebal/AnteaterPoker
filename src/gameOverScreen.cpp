@@ -313,30 +313,47 @@ void gameOverScreen::applyStyles() {
 }
 
 // ── setResults ────────────────────────────────────────────────────────────
-void gameOverScreen::setResults(const std::vector<FinalPlayerResults>& results,
-                                const gameSummary&                     summary) {
-    populateResults(results);
+void gameOverScreen::setResults(const std::vector<PLAYER>& results,
+                                const GAMESTATE&                     summary) {
+    //populateResults(results);
     populateSummary(summary);
 
-    // Cache winner's cards for the drawing area
-    winnerCards.clear();
-    for (auto& r : results) {
-        if (r.isWinner) {
-            winnerCards = r.handCards;
-            break;
+    int highestScore = -1;
+    size_t winnerIndex = 0;
+
+    for (size_t i = 0; i < results.size(); ++i){
+        if (results[i].score > highestScore) {
+            highestScore = results[i].score;
+            winnerIndex = i;
         }
     }
-    gtk_widget_queue_draw(winnerHandArea);
+
+    PILES winnerCards;
+    if (!summary.allCards.empty()){
+        winnerCards = summary.allCards;
+    }
+
+    populateResults(results);
 }
 
-void gameOverScreen::populateResults(const std::vector<FinalPlayerResults>& results) {
+void gameOverScreen::populateResults(const std::vector<PLAYER>& results) {
     // Clear old rows
     GList* children = gtk_container_get_children(GTK_CONTAINER(resultBox));
     for (GList* l = children; l; l = l->next)
         gtk_widget_destroy(GTK_WIDGET(l->data));
     g_list_free(children);
 
-    for (auto& r : results) {
+    // 1. Determine the highest score first to identify who the winner(s) are
+    int highestScore = -1;
+    for (const auto& p : results) {
+        if (p.score > highestScore) {
+            highestScore = p.score;
+        }
+    }
+
+    int currentRank = 1; // Used dynamically instead of r.rank
+
+    for (const auto& r : results) {
         // Row container
         GtkWidget* rowFrame = gtk_frame_new(nullptr);
         gtk_widget_set_name(rowFrame, "go-player-row");
@@ -360,32 +377,37 @@ void gameOverScreen::populateResults(const std::vector<FinalPlayerResults>& resu
         gtk_box_pack_start(GTK_BOX(rowBox), textCol, TRUE, TRUE, 0);
 
         std::ostringstream nameStr;
-        nameStr << r.rank << ".  " << r.username;
+        // CHANGED: Use computed currentRank and r.name (replaces username)
+        nameStr << currentRank << ".  " << r.name;
         GtkWidget* nameLabel = gtk_label_new(nameStr.str().c_str());
         gtk_widget_set_name(nameLabel, "go-rank-label");
         gtk_widget_set_halign(nameLabel, GTK_ALIGN_START);
         gtk_box_pack_start(GTK_BOX(textCol), nameLabel, FALSE, FALSE, 0);
 
         std::ostringstream chipsStr;
-        chipsStr << "CHIPS: " << r.chips;
-        if (r.chipDelta > 0) chipsStr << "  (+" << r.chipDelta << ")";
+        // CHANGED: Use r.score (replaces chips), and removed chipDelta references
+        chipsStr << "CHIPS: " << r.score;
         GtkWidget* chipsLabel = gtk_label_new(chipsStr.str().c_str());
-        gtk_widget_set_name(chipsLabel, r.chipDelta > 0 ? "go-delta-label" : "go-chips-label");
+        gtk_widget_set_name(chipsLabel, "go-chips-label");
         gtk_widget_set_halign(chipsLabel, GTK_ALIGN_START);
         gtk_box_pack_start(GTK_BOX(textCol), chipsLabel, FALSE, FALSE, 0);
 
         // WINNER badge
-        if (r.isWinner) {
+        // CHANGED: Dynamically deduce if this player matches the highest score
+        bool isWinner = (r.score == highestScore && highestScore >= 0);
+        if (isWinner) {
             GtkWidget* badge = gtk_label_new("WINNER");
             gtk_widget_set_name(badge, "go-winner-badge");
             gtk_widget_set_valign(badge, GTK_ALIGN_CENTER);
             gtk_box_pack_end(GTK_BOX(rowBox), badge, FALSE, FALSE, 4);
         }
+
+        currentRank++; // Increment placement list ranking
     }
     gtk_widget_show_all(resultBox);
 }
 
-void gameOverScreen::populateSummary(const gameSummary& s) {
+void gameOverScreen::populateSummary(const GAMESTATE& s) {
     // Remove old stat rows (keep title + chipArea = first 2 children)
     GList* children = gtk_container_get_children(GTK_CONTAINER(summaryBox));
     int idx = 0;
@@ -409,11 +431,13 @@ void gameOverScreen::populateSummary(const gameSummary& s) {
         gtk_box_pack_start(GTK_BOX(row), val, FALSE, FALSE, 0);
     };
 
-    addRow("Total Hands", std::to_string(s.totalHands));
-    addRow("Duration", s.duration);
+    // CHANGED: Map rows safely to authentic parameters exposed by GAMESTATE layout
+    addRow("Total Active Players", std::to_string(s.numPlayers));
+    addRow("Final Betting Round Index", std::to_string(s.round));
+    
     std::ostringstream potStr;
-    potStr << s.biggestPot;
-    addRow("Biggest Pot", potStr.str(), true);
+    potStr << s.pot; // Maps to s.pot (replaces missing s.biggestPot)
+    addRow("Final Hand Pot", potStr.str(), true);
 
     gtk_widget_show_all(summaryBox);
 }
@@ -475,26 +499,26 @@ int main(int argc, char* argv[]) {
     screenInstance.onPlayAgain = handlePlayAgain;
 
     // Build Mock Data matching structure names in gameOverScreen.hpp
-    std::vector<FinalPlayerResults> mockResults;
+    std::vector<PLAYER> mockResults;
     
-    FinalPlayerResults p1;
+    PLAYER p1;
     p1.rank = 1;
-    p1.username = "AcesHigh_99";
-    p1.chips = 24500;
+    p1.name = "AcesHigh_99";
+    p1.score = 24500;
     p1.chipDelta = 12500;
     p1.isWinner = true;
     p1.handCards = {{"A", "♠"}, {"A", "♦"}, {"10", "♠"}, {"J", "♠"}, {"Q", "♠"}};
     mockResults.push_back(p1);
 
-    FinalPlayerResults p2;
+    PLAYER p2;
     p2.rank = 2;
-    p2.username = "BluffMaster";
-    p2.chips = 8000;
+    p2.name = "BluffMaster";
+    p2.score = 8000;
     p2.chipDelta = -3000;
     p2.isWinner = false;
     mockResults.push_back(p2);
 
-    gameSummary mockSummary;
+    GAMESTATE mockSummary;
     mockSummary.totalHands = 42;
     mockSummary.duration = "1h 24m 05s";
     mockSummary.biggestPot = 18500;

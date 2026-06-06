@@ -7,19 +7,22 @@ LIBS = $(shell pkg-config --libs gtk+-3.0)
 PORT = 10080
 HOST = 127.0.0.1
 
-SHAREDSRCS = src/cards.cpp src/DataTransfer.cpp src/stubFunctionsW9.cpp
+SHAREDSRCS = src/cards.cpp src/DataTransfer.cpp 
 
 # compiling all the shared sources
 SHAREDOBJS = $(SHAREDSRCS:.cpp=.o)
+
+SCREENSRCS = src/loginScreen.cpp src/hostScreen.cpp src/joinScreen.cpp src/pokerScreen.cpp src/gameOverScreen.cpp
+SCREENOBJS = $(SCREENSRCS:.cpp=.o)
 
 all:  ./bin/poker_client ./bin/poker_server
 	@echo ""
 	@echo ""
 	@echo "File names:  bin/poker_server bin/poker_client"
 
-bin/poker_client: src/clientGUI.o $(SHAREDOBJS)
+bin/poker_client: src/clientGUI.o $(SHAREDOBJS) $(SCREENOBJS)
 	@mkdir -p bin
-	$(CC) $(CFLAGS) -o bin/poker_client src/clientGUI.o $(SHAREDOBJS) $(LIBS)
+	$(CC) $(CFLAGS) -o bin/poker_client src/clientGUI.o $(SHAREDOBJS) $(SCREENOBJS) $(LIBS)
 
 bin/poker_server: src/serverGUI.o $(SHAREDOBJS)
 	@mkdir -p bin
@@ -64,7 +67,7 @@ tar: clean all
 
 	# Source Code Packaged Content
 	cp README COPYRIGHT INSTALL Makefile Poker_UserManual.pdf Poker_SoftwareSpec.pdf poker_src/
-	cp src/* poker_src/src/
+	cp src/*.cpp src/*.hpp poker_src/src/
 	cp -r assets/* poker_src/assets/ 2>/dev/null || true
 	gtar czf Poker_V1.0_src.tar.gz poker_src/
 
@@ -75,7 +78,7 @@ tar: clean all
 	@echo "Packaged together Poker_V1.0.tar.gz and Poker_V1.0_src.tar.gz successfully"
 
 clean:
-	rm -r src/*.o bin/*
+	rm -f src/*.o bin/*
 	# rm -rf bin
 
 .PHONY: all clean test_server test_client test_gui tar
