@@ -3,7 +3,7 @@
 #include <iostream>
 #include <ostream>
 #include "login.hpp"
-
+#include "endscreen.hpp"
 
 void set_window_background(GtkWidget *window){
 
@@ -35,7 +35,6 @@ static void activate (GtkApplication *app, gpointer user_data){
     GtkWidget* window;
     GtkWidget* title;
     GtkWidget* label;
-    GtkWidget* summary;
     GtkWidget* first;
     GtkWidget* second;
     GtkWidget* third;
