@@ -110,32 +110,26 @@ static string resolveFile(const string& relativePath) {
 
 static string getCardFilePath(const Card& card) {
 
-    if (card.faceDown) {
+    if (card.val < 0 || card.suit < 0 || card.val > 12 || card.suit > 3) {
         return resolveFile("assets/Back.png");
     }
 
-    string suitName = card.suit;
 
-    if (suitName == "♥") suitName = "Heart";
-    else if (suitName == "♦") suitName = "Diamond";
-    else if (suitName == "♣") suitName = "Clover";
-    else if (suitName == "♠") suitName = "Spades";
-
-    string rankNum = card.rank;
-
-    if (suitName == "Heart" ||
-        suitName == "Diamond" ||
-        suitName == "Clover" ||
-        suitName == "Spades") {
-
-        string path =
-            "assets/" + suitName + "/" +
-            suitName + " " + rankNum + ".png";
-
-        return resolveFile(path);
+    string suitName;
+    if (card.suit == 0)      suitName = "Heart";
+    else if (card.suit == 1) suitName = "Clover";   
+    else if (card.suit == 2) suitName = "Diamond";
+    else if (card.suit == 3) suitName = "Spades";
+    else {
+        return resolveFile("assets/Anteater.png");
     }
 
-    return resolveFile("assets/Anteater.png");
+    const char* ranks[] = { "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace" };
+    string rankNum = ranks[card.val];
+
+    string path = "assets/" + suitName + "/" + suitName + " " + rankNum + ".png";
+
+    return resolveFile(path);
 }
 
 
@@ -248,13 +242,36 @@ void pokerScreen::applyStyles() {
     g_object_unref(provider);
 }
 
-void pokerScreen::updateGameState(const vector<playerInfo>& players,
+void pokerScreen::updateGameState(const vector<PLAYER>& players,
                                   const vector<Card>& communityCards,
                                   const vector<Card>& holeCards,
                                   int pot,
                                   int currentBet,
                                   int currentPlayerStack) {
-    cachedPlayers = players;
+    cachedPlayers.clear();
+    for (const auto& enginePlayer : players) {
+        playerInfo uiSeat;
+        uiSeat.name = enginePlayer.name;
+        uiSeat.stack = enginePlayer.score;
+        uiSeat.avatarIndex = enginePlayer.playerNum;
+        
+        // Determine player status text based on engine flags
+        if (enginePlayer.isInHand == 0) {
+            uiSeat.status = "Folded";
+        } else if (enginePlayer.isEliminated == 1) {
+            uiSeat.status = "Eliminated";
+        } else {
+            uiSeat.status = "Active";
+        }
+        
+        // Match active turn markers
+        // Assuming your controller handles turn indicators, or defaults to false
+        uiSeat.yourTurn = false; 
+        uiSeat.isDealer = false; 
+
+        cachedPlayers.push_back(uiSeat);
+    }
+
     cachedCommunity = communityCards;
     cachedHole = holeCards;
     cachedPot = pot;
@@ -342,7 +359,7 @@ void pokerScreen::drawTable(cairo_t* cr, int w, int h) {
     for (int i = 0; i < numCommunity; ++i) {
         drawCard(cr, startX + i * cardSpacing, cardY, cardW, cardH, cachedCommunity[i]);
     }
-    Card back; back.faceDown = true;
+    Card back;
     for (int i = numCommunity; i < 5; ++i) {
         drawCard(cr, startX + i * cardSpacing, cardY, cardW, cardH, back);
     }
@@ -412,7 +429,14 @@ void pokerScreen::drawCard(cairo_t* cr, double x, double y,
         cairo_set_font_size(cr, 11);
         
         cairo_text_extents_t te;
-        string displayText = card.faceDown ? "BACK" : (card.rank + card.suit);
+        string displayText;
+        if (card.val < 0 || card.suit < 0) {
+            displayText = "BACK";
+        } else {
+            const char* suitsShort[] = { "H", "C", "D", "S" };
+            const char* valuesShort[] = { "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A" };
+            displayText = string(valuesShort[card.val]) + suitsShort[card.suit];
+        }
         cairo_text_extents(cr, displayText.c_str(), &te);
         
         cairo_move_to(cr, x + (cw - te.width) / 2.0, y + (ch + te.height) / 2.0);
@@ -630,18 +654,18 @@ int main(int argc, char* argv[]) {
     }
 
     vector<Card> communityBoard;
-    Card board1, board2, board3;
-    board1.rank = "10"; board1.suit = "♥"; board1.faceDown = false;
-    board2.rank = "J";  board2.suit = "♥"; board2.faceDown = false;
-    board3.rank = "Q";  board3.suit = "♥"; board3.faceDown = false;
+    // enum val { Two... Ten=8, Jack=9, Queen=10, King=11, Ace=12 }
+    // enum suit { Hearts=0, Clubs=1, Diamonds=2, Spades=3 }
+    Card board1(8, 0);  // 10 of Hearts
+    Card board2(9, 0);  // Jack of Hearts
+    Card board3(10, 0); // Queen of Hearts
     communityBoard.push_back(board1);
     communityBoard.push_back(board2);
     communityBoard.push_back(board3);
 
     vector<Card> privateHoleCards;
-    Card hole1, hole2;
-    hole1.rank = "A";  hole1.suit = "♥"; hole1.faceDown = false;
-    hole2.rank = "K";  hole2.suit = "♥"; hole2.faceDown = false;
+    Card hole1(12, 0);  // Ace of Hearts
+    Card hole2(11, 0);  // King of Hearts
     privateHoleCards.push_back(hole1);
     privateHoleCards.push_back(hole2);
 

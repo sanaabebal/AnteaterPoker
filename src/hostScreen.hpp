@@ -5,12 +5,10 @@
 #include <vector>
 #include <string>
 #include <functional>
-using namespace std;
+#include "data.hpp"
+#include "cards.hpp"
 
-struct RegisteredPlayer {
-    string name;
-    int slot;
-};
+using namespace std;
 
 class hostScreen {
     public:
@@ -19,7 +17,7 @@ class hostScreen {
 
         GtkWidget *getWidget();
 
-        void playerList(const vector<RegisteredPlayer>& players, int maxPlayers);
+        void playerList(const vector<PLAYER>& players, int maxPlayers);
 
         function<void(const string& username, const string& password, int numPlayers)> onInvite;
 

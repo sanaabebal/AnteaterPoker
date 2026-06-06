@@ -1,7 +1,11 @@
 #include "hostScreen.hpp"
+#include "data.hpp"
+
 #include <string>
 #include <sstream>
 using namespace std;
+
+extern LOGININFO playerLoginInfo;
 
 static const char* hostCSS = R"CSS(
 #hs-root {
@@ -280,7 +284,7 @@ void hostScreen::applyStyles() {
     g_object_unref(provider);
 }
 
-void hostScreen::playerList(const vector<RegisteredPlayer>& players, int mp) {
+void hostScreen::playerList(const vector<PLAYER>& players, int mp) {
     maxPlayers = mp;
 
     GList *rows = gtk_container_get_children(GTK_CONTAINER(listBox));
@@ -301,7 +305,7 @@ void hostScreen::playerList(const vector<RegisteredPlayer>& players, int mp) {
         };
 
         gtk_box_pack_start(GTK_BOX(row), cell(p.name, 100), FALSE, FALSE, 0);
-        gtk_box_pack_start(GTK_BOX(row), cell(to_string(p.slot), 60), FALSE, FALSE, 0);
+        gtk_box_pack_start(GTK_BOX(row), cell(to_string(p.playerNum), 60), FALSE, FALSE, 0);
         gtk_box_pack_start(GTK_BOX(row), cell("✓", 60), FALSE, FALSE, 0);
 
         GtkWidget *listRow = gtk_list_box_row_new();
@@ -324,12 +328,23 @@ void hostScreen::inviteClicked(GtkButton*, gpointer inputData) {
     string pass = gtk_entry_get_text(GTK_ENTRY(self -> pwdEntry));
     int index = gtk_combo_box_get_active(GTK_COMBO_BOX(self -> numCombo));
     int num = index + 2;
+
+    strncpy(playerLoginInfo.playerName, user.c_str(), sizeof(playerLoginInfo.playerName) - 1);
+    strncpy(playerLoginInfo.password, pass.c_str(), sizeof(playerLoginInfo.password) - 1);
+    playerLoginInfo.numPlayers = num;
+    playerLoginInfo.playerNum = 0; 
+    playerLoginInfo.playerType = Human;
+    playerLoginInfo.playersFound.resize(num);
+    playerLoginInfo.playersFound[0] = 1;
     
-    self -> onInvite(user, pass, num);
+    if (self -> onInvite){
+        self -> onInvite(user, pass, num);
+    }
 }
 
 void hostScreen::launchClicked(GtkButton*, gpointer inputData) {
     auto *self = static_cast<hostScreen*>(inputData);
+
     if (self -> onLaunch) {
         self -> onLaunch();
     }
@@ -337,6 +352,8 @@ void hostScreen::launchClicked(GtkButton*, gpointer inputData) {
 
 void hostScreen::lobbyClicked(GtkButton*, gpointer inputData) {
     auto *self = static_cast<hostScreen*>(inputData);
+
+
     if (self -> onLobby) {
         self -> onLobby();
     }

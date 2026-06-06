@@ -2,8 +2,12 @@
 #include <string.h>
 
 #include "loginScreen.hpp"
+#include "data.hpp" // need this in order to acces playerLoginInfo
 
 using namespace std;
+
+// an external GLOBAL variable used in clientGUI.cpp
+extern LOGININFO playerLoginInfo;
 
 static const char* loginCSS = R"CSS(
 .ls-root {
@@ -116,8 +120,13 @@ void loginScreen::applyStyles() {
     gtk_style_context_add_class(context, "ls-button");
 }
 
+// ALL ACTIONS REQUIRING CHANGE FROM USER INPUT MUST HAVE COMMUNICATION BETWEEN EVERYTHING
 void loginScreen::onHostClicked(GtkButton* , gpointer inputData){
     auto *self = static_cast<loginScreen*>(inputData);
+
+    // explicitly stating that the person joining the game is a host now
+    playerLoginInfo.isHost = true;
+
     if (self -> onHostGame){
         self -> onHostGame();
     }
@@ -125,12 +134,18 @@ void loginScreen::onHostClicked(GtkButton* , gpointer inputData){
 
 void loginScreen::onPlayerClicked(GtkButton* , gpointer inputData){
     auto *self = static_cast<loginScreen*>(inputData);
+
+    // explicitly stating that the person joining the game isn't a host now
+    playerLoginInfo.isHost = false;
+
     if (self -> onPlayerGame){
         self -> onPlayerGame();
     }
 }
 
 #ifdef TEST_LOGIN
+LOGININFO playerLoginInfo;
+
 int main(int argc, char* argv[]) {
     gtk_init(&argc, &argv);
 

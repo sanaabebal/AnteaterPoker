@@ -5,6 +5,8 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include "data.hpp"
+#include "cards.hpp"
 
 using namespace std;
 
@@ -17,13 +19,6 @@ struct playerInfo {
     int avatarIndex;
 };
 
-struct Card {
-    string rank;
-    string suit;
-    bool faceDown;
-
-};
-
 class pokerScreen {
     public:
         pokerScreen();
@@ -31,7 +26,7 @@ class pokerScreen {
 
         GtkWidget* getWidget();
 
-        void updateGameState( const vector<playerInfo>& players,
+        void updateGameState( const vector<PLAYER>& players,
                               const vector<Card>& communityCards,
                               const vector<Card>& holeCards,
                               int pot,
