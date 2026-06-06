@@ -1,0 +1,13 @@
+CXX = g++
+CXXFLAGS = -Wall -g `pkg-config --cflags gtk+-3.0`
+LDFLAGS = `pkg-config --libs gtk+-3.0`
+
+TARGET = test
+SRC = test.cpp
+
+$(TARGET): $(SRC)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SRC) $(LDFLAGS)
+
+clean:
+	rm -f $(TARGET)
+
