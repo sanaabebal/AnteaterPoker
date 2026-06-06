@@ -311,3 +311,61 @@ void ClientGUI::setResults(const vector<FinalPlayerResult>& results, const Sessi
 void ClientGUI::onWindowDestroy(GtkWidget*, gpointer) {
     gtk_main_quit();
 }
+
+
+/* MAIN FUNCTION */
+int main(int argc, char *argv[]){
+    int PortNo;
+    struct hostent *Server;
+
+    Program = argv[0];
+
+    if (argc < 3){  
+
+        char actualServer[100];
+        printf("Before starting the login menu, please specify where the server actually is (e.g. an IP address; \'bondi\'; etc):  ");
+        scanf(" %s", actualServer);
+
+        Server = gethostbyname(actualServer);
+        PortNo = DEFAULT_SERVERPORT;
+        
+    } else{ 
+        Server = gethostbyname(argv[1]);
+        PortNo = atoi(argv[2]);
+    }
+
+
+    if (Server == NULL)
+    {   fprintf(stderr, "%s: no such host named '%s'\n", Program, argv[1]);
+        exit(10);
+    }
+
+    if (PortNo <= 2000)
+    {   fprintf(stderr, "%s: invalid port number %d, should be >2000\n",
+		Program, PortNo);
+        exit(10);
+    }
+    ServerAddress.sin_family = AF_INET;
+    ServerAddress.sin_port = htons(PortNo);
+    ServerAddress.sin_addr = *(struct in_addr*)Server->h_addr_list[0];
+
+
+    /* Connecting to Server*/
+    SocketFD = socket(AF_INET, SOCK_STREAM, 0);
+    if (SocketFD < 0){   
+        FatalError("socket creation failed");
+    }
+    if (connect(SocketFD, (struct sockaddr*)&ServerAddress,
+            sizeof(struct sockaddr_in)) < 0){   
+                FatalError("connecting to server failed");
+    }
+
+    /* LOGIN MENU */
+    LOGININFO loginInfo;
+    loginInfo = Talk2ServerLogin(loginInfo);
+    MainMenu(&argc, &argv, loginInfo);
+
+    // Wrapup
+    close(SocketFD);
+    
+}

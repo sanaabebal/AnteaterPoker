@@ -89,7 +89,7 @@ static const char* GAME_CSS = R"CSS(
 
 )CSS";
 
-static string resolveAsset(const string& relativePath) {
+static string resolveFile(const string& relativePath) {
 
     vector<string> searchPaths = {
         relativePath,
@@ -104,14 +104,14 @@ static string resolveAsset(const string& relativePath) {
         }
     }
 
-    cerr << "Asset not found: " << relativePath << endl;
+    cerr << "File not found: " << relativePath << endl;
     return relativePath;
 }
 
-static string getCardAssetPath(const Card& card) {
+static string getCardFilePath(const Card& card) {
 
     if (card.faceDown) {
-        return resolveAsset("assets/Back.png");
+        return resolveFile("assets/Back.png");
     }
 
     string suitName = card.suit;
@@ -132,10 +132,10 @@ static string getCardAssetPath(const Card& card) {
             "assets/" + suitName + "/" +
             suitName + " " + rankNum + ".png";
 
-        return resolveAsset(path);
+        return resolveFile(path);
     }
 
-    return resolveAsset("assets/Anteater.png");
+    return resolveFile("assets/Anteater.png");
 }
 
 
@@ -180,11 +180,13 @@ void pokerScreen::buildUI() {
 
     foldButton = gtk_button_new_with_label("FOLD");
     gtk_widget_set_name(foldButton, "gs-fold-btn");
+    //gtk_widget_set_halign(foldButton, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(actionBar), foldButton, TRUE, TRUE, 0);
     g_signal_connect(foldButton, "clicked", G_CALLBACK(onFoldClicked), this);
 
     checkButton = gtk_button_new_with_label("CHECK");
     gtk_widget_set_name(checkButton, "gs-check-btn");
+    //gtk_widget_set_halign(checkButton, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(actionBar), checkButton, TRUE, TRUE, 0);
     g_signal_connect(checkButton, "clicked", G_CALLBACK(onCheckClicked), this);
 
@@ -198,17 +200,20 @@ void pokerScreen::buildUI() {
     GtkWidget* minusBtn = gtk_button_new_with_label("−");
     gtk_widget_set_name(minusBtn, "gs-bet-btn");
     gtk_widget_set_size_request(minusBtn, 30, -1);
+    //gtk_widget_set_halign(minusBtn, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(betBox), minusBtn, FALSE, FALSE, 0);
 
     betSpinButton = gtk_spin_button_new_with_range(10, 100000, 50);
     gtk_widget_set_name(betSpinButton, "gs-spin");
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(betSpinButton), 50);
     gtk_widget_set_size_request(betSpinButton, 80, -1);
+    //gtk_widget_set_halign(betSpinButton, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(betBox), betSpinButton, FALSE, FALSE, 0);
 
     GtkWidget* plusBtn = gtk_button_new_with_label("+");
     gtk_widget_set_name(plusBtn, "gs-bet-btn");
     gtk_widget_set_size_request(plusBtn, 30, -1);
+    //gtk_widget_set_halign(plusBtn, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(betBox), plusBtn, FALSE, FALSE, 0);
 
     g_signal_connect_swapped(minusBtn, "clicked",
@@ -221,13 +226,14 @@ void pokerScreen::buildUI() {
     betButton = gtk_button_new_with_label("BET");
     gtk_widget_set_name(betButton, "gs-bet-btn");
     gtk_widget_set_size_request(betButton, 60, -1);
+    //gtk_widget_set_halign(betButton, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(betBox), betButton, FALSE, FALSE, 0);
     g_signal_connect(betButton, "clicked", G_CALLBACK(onBetClicked), this);
 
     allInButton = gtk_button_new_with_label("ALL IN");
     gtk_widget_set_name(allInButton, "gs-allin-btn");
-    gtk_widget_set_size_request(allInButton, 60, -1);
-    gtk_box_pack_start(GTK_BOX(actionBar), allInButton, FALSE, FALSE, 0);
+    //gtk_widget_set_halign(allInButton, GTK_ALIGN_CENTER);
+    gtk_box_pack_start(GTK_BOX(actionBar), allInButton, TRUE, TRUE, 0);
     g_signal_connect(allInButton, "clicked", G_CALLBACK(onAllInClicked), this);
 
 }
@@ -243,17 +249,17 @@ void pokerScreen::applyStyles() {
 }
 
 void pokerScreen::updateGameState(const vector<playerInfo>& players,
-                                  const vector<Card>&       communityCards,
-                                  const vector<Card>&       holeCards,
-                                  int                       pot,
-                                  int                       currentBet,
-                                  int                       currentPlayerStack) {
-    cachedPlayers   = players;
+                                  const vector<Card>& communityCards,
+                                  const vector<Card>& holeCards,
+                                  int pot,
+                                  int currentBet,
+                                  int currentPlayerStack) {
+    cachedPlayers = players;
     cachedCommunity = communityCards;
-    cachedHole      = holeCards;
-    cachedPot       = pot;
-    cachedBet       = currentBet > 0 ? currentBet : 50;
-    localStack      = currentPlayerStack;
+    cachedHole = holeCards;
+    cachedPot = pot;
+    cachedBet = currentBet > 0 ? currentBet : 50;
+    localStack = currentPlayerStack;
 
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(betSpinButton), cachedBet);
     gtk_spin_button_set_range(GTK_SPIN_BUTTON(betSpinButton), 10, localStack);
@@ -262,9 +268,9 @@ void pokerScreen::updateGameState(const vector<playerInfo>& players,
 }
 
 void pokerScreen::setActions(bool enable) {
-    gtk_widget_set_sensitive(foldButton,    enable);
-    gtk_widget_set_sensitive(checkButton,   enable);
-    gtk_widget_set_sensitive(betButton,     enable);
+    gtk_widget_set_sensitive(foldButton, enable);
+    gtk_widget_set_sensitive(checkButton, enable);
+    gtk_widget_set_sensitive(betButton, enable);
     gtk_widget_set_sensitive(betSpinButton, enable);
 }
 
@@ -384,7 +390,7 @@ void pokerScreen::drawTable(cairo_t* cr, int w, int h) {
 
 void pokerScreen::drawCard(cairo_t* cr, double x, double y,
                            double cw, double ch, const Card& card) {
-    string filePath = getCardAssetPath(card);
+    string filePath = getCardFilePath(card);
 
     GError* error = nullptr;
     GdkPixbuf* pixbuf = gdk_pixbuf_new_from_file(filePath.c_str(), &error);
@@ -469,7 +475,7 @@ void pokerScreen::drawPlayer(cairo_t* cr, int w, int h,
     double rx = w * 0.44, ry = h * 0.38;
 
     double angleOffset = M_PI / 2.0;
-    double angle       = angleOffset + (2.0 * M_PI * seatIndex / numSeats);
+    double angle = angleOffset + (2.0 * M_PI * seatIndex / numSeats);
     
     double px = cx + rx * 1.12 * cos(angle);
     double py = cy + ry * 1.16 * sin(angle);
@@ -479,8 +485,12 @@ void pokerScreen::drawPlayer(cairo_t* cr, int w, int h,
 
     bool isTurn = p.yourTurn;
 
-    if (isTurn) setRGBA(cr, 0.85, 0.73, 0.25, 0.95); 
-    else        setRGBA(cr, 0.12, 0.25, 0.25, 0.90);
+    if (isTurn) {
+        setRGBA(cr, 0.85, 0.73, 0.25, 0.95); 
+    }
+    else {
+        setRGBA(cr, 0.12, 0.25, 0.25, 0.90);
+    }
 
     cairo_rectangle(cr, bx, by, boxW, boxH);
     cairo_fill(cr);
@@ -638,7 +648,7 @@ int main(int argc, char* argv[]) {
     gameUI.onFold  = []() { cout << "[Sandbox Action Log]: FOLD was pressed!" << endl; };
     gameUI.onCheck = []() { cout << "[Sandbox Action Log]: CHECK/CALL was pressed!" << endl; };
     gameUI.onBet   = [](int val) { cout << "[Sandbox Action Log]: BET registration parsed for: $" << val << endl; };
-    gameUI.onAllIn = []() { cout << "[Sandbox Action Log]: ALL IN was pressed!" << endl};
+    gameUI.onAllIn = []() { cout << "[Sandbox Action Log]: ALL IN was pressed!" << endl; };
 
     gameUI.updateGameState(finalPlayersList, communityBoard, privateHoleCards, mockData.potTotal, mockData.minimumToCall, 2500);
     gameUI.setActions(true);
