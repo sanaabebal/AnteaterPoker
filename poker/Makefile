@@ -54,6 +54,9 @@ test-client test_client:  bin/testAlphaClient
 
 LHTEST:  ./bin/testGUIW9
 
+test-bot test_bot: ./bin/testBotDecisions
+	./bin/testBotDecisions
+
 
 # Main executables
 ./bin/poker_server:  serverGUIW9.o cards.o DataTransfer.o gamestate.o
@@ -136,6 +139,14 @@ testServerCommW9.o:  ./src/testServerCommW9.cpp $(SHARED) src/DataTransfer.hpp
 testClientCommW9.o:  ./src/testClientCommW9.cpp $(SHARED) src/DataTransfer.hpp
 	$(OBJ) ./src/testClientCommW9.cpp -o testClientCommW9.o $(GTK_CFLAGS)
 
+botDecisions.o: ./src/botDecisions.cpp ./src/botDecisions.hpp $(SHARED) ./src/scoreCalc.hpp
+	$(OBJ) ./src/botDecisions.cpp -o botDecisions.o
+
+scoreCalc.o: ./src/scoreCalc.cpp ./src/scoreCalc.hpp $(SHARED) 
+	$(OBJ) ./src/scoreCalc.cpp ./src/scoreCalc.o
+
+testBotDecisions.o: ./src/testBotDecisions.cpp ./src/testBotDecisions.hpp $(SHARED)
+	$(OBJ) ./src/testBotDecisions.cpp -o testBotDecisions.o
 
 
 
