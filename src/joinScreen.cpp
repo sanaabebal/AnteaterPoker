@@ -293,7 +293,7 @@ void joinScreen::onConfirmedJoinClicked(GtkButton*, gpointer inputData) {
         g_free(activeText);
     }
 
-    LOGININFO playerLoginInfo;
+    extern LOGININFO playerLoginInfo;
 
     // Additional logic needed for merging
     strncpy(playerLoginInfo.playerName, user.c_str(), sizeof(playerLoginInfo.playerName) -1);
@@ -302,10 +302,9 @@ void joinScreen::onConfirmedJoinClicked(GtkButton*, gpointer inputData) {
     playerLoginInfo.playerType = Human;
 
     if (selectedSlot >= 0){
-        if ((size_t)selectedSlot >= playerLoginInfo.playersFound.size()) {
+        if (selectedSlot >= 0 && (size_t)selectedSlot < playerLoginInfo.playersFound.size()) {
             playerLoginInfo.playersFound[selectedSlot] = 1;
         }
-
         playerLoginInfo.playersFound[selectedSlot] = 1;
     }
 

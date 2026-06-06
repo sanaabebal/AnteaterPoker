@@ -242,12 +242,14 @@ void pokerScreen::applyStyles() {
     g_object_unref(provider);
 }
 
-void pokerScreen::updateGameState(const vector<PLAYER>& players,
+void pokerScreen::GameState(const vector<PLAYER>& players,
                                   const vector<Card>& communityCards,
                                   const vector<Card>& holeCards,
                                   int pot,
                                   int currentBet,
-                                  int currentPlayerStack) {
+                                  int currentPlayerStack
+                                  int playerTurn,
+                                  int dealerPlayer) {
     cachedPlayers.clear();
     for (const auto& enginePlayer : players) {
         playerInfo uiSeat;
@@ -266,8 +268,8 @@ void pokerScreen::updateGameState(const vector<PLAYER>& players,
         
         // Match active turn markers
         // Assuming your controller handles turn indicators, or defaults to false
-        uiSeat.yourTurn = false; 
-        uiSeat.isDealer = false; 
+        uiSeat.yourTurn = (enginePlayer.playerNum == playerTurn); 
+        uiSeat.isDealer = (enginePlayer.playerNum == dealerTurn); 
 
         cachedPlayers.push_back(uiSeat);
     }

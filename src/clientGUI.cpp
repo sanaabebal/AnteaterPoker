@@ -255,7 +255,6 @@ void ClientGUI::wireCallbacks() {
         show(ScreenID::Login);
     };
 
-    /*
     joinScreenObject->onConfirmedJoin = [this](const string& username, const string& password, int slot) {
         // ZZZ: NOT SURE YET
         if (onJoinConfirm){
@@ -397,8 +396,10 @@ void ClientGUI::setAvailableSlots(const vector<int>& slots) {
 }
 
 void ClientGUI::updateGameState(const vector<PLAYER>& players, const vector<Card>& community,
-                                 const vector<Card>& hole, int pot, int currentBet, int localStack) {
-    pokerScreenObject->updateGameState(players, community, hole, pot, currentBet, localStack);
+                                 const vector<Card>& hole, int pot, int currentBet, int localStack,
+                                 int playerTurn, int dealerTurn) {
+    pokerScreenObject->updateGameState(players, community, hole, pot, currentBet, localStack, 
+                                        playerTurn, dealerTurn);
 }
 
 void ClientGUI::setGameActions(bool enabled) { 
