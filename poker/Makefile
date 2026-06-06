@@ -59,8 +59,8 @@ LHTEST:  ./bin/testGUIW9
 ./bin/poker_server:  serverGUIW9.o cards.o DataTransfer.o gamestate.o scoreCalc.o
 	g++ -Wall serverGUIW9.o cards.o DataTransfer.o gamestate.o scoreCalc.o -o ./bin/poker_server $(GTK_LIBS)
 
-./bin/poker_client:  clientGUIW9.o cards.o DataTransfer.o
-	g++ -Wall clientGUIW9.o cards.o DataTransfer.o -o ./bin/poker_client $(GTK_LIBS)
+./bin/poker_client:  clientGUIW9.o cards.o DataTransfer.o scoreCalc.o botDecisions.o
+	g++ -Wall clientGUIW9.o cards.o DataTransfer.o scoreCalc.o botDecisions.o -o ./bin/poker_client $(GTK_LIBS)
 
 
 
@@ -95,8 +95,11 @@ stubFunctionsW9.o:  ./src/stubFunctionsW9.cpp $(SHARED)
 gamestate.o:  ./src/gamestate.cpp $(SHARED) ./src/gamestate.hpp
 	g++ -c ./src/gamestate.cpp -o gamestate.o
 
-scoreCalc.o:  ./src/scoreCalc.cpp $(SHARED) ./src/scoreCalc.cpp
+scoreCalc.o:  ./src/scoreCalc.cpp $(SHARED) ./src/scoreCalc.hpp
 	$(OBJ) ./src/scoreCalc.cpp -o scoreCalc.o
+
+botDecisions.o:  ./src/botDecisions.cpp $(SHARED) ./src/scoreCalc.hpp ./src/botDecisions.hpp
+	$(OBJ) ./src/botDecisions.cpp -o botDecisions.o
 
 
 

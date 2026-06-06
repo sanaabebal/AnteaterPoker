@@ -243,14 +243,18 @@ void MessageAllClients(){
     printf("MESSAGING ALL CLIENTS:  \n");
     officialGameState.PrintGameState();
 
+    printf("Messaging sockets:  ");
+
     for(unsigned int i=0; i<connectedClientSockets.size(); i++){
         clientSocket = connectedClientSockets[i];
+        printf("%d ", clientSocket);
 
         n = write(clientSocket, SendBuf.data(), SendBuf.size());
         if(n < 0){
             printf("ERROR:  Couldn't write message to player %d (0, 1, 2, etc.)\n", i);
         }
     }
+    printf("\n");
     return;
 }
 

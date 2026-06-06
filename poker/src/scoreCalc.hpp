@@ -39,4 +39,6 @@ int isHighCard(PILES piles, int playerNum);
 int val_translator(int x);
 int makeScore(int hand, int max, int second, int third, int fourth, int fifth);
 
+int handhierarchy(PILES piles, int playerNum);
+
 #endif

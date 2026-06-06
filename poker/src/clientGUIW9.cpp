@@ -16,6 +16,7 @@
 #include "cards.hpp"
 #include "data.hpp"
 #include "DataTransfer.hpp"
+#include "botDecisions.hpp"
 
 
 #define DEFAULT_SERVERPORT 10080
@@ -252,6 +253,11 @@ void PlayerTypeWindow(LOGININFO &loginInfo);
 void WaitScreenWindow(LOGININFO &loginInfo);
 
 gboolean WaitFreeze(gpointer na);
+gboolean CompMoveFreeze(gpointer na);
+void executeFold();
+void executeCall();
+void executeCompRaise(int compRaise);
+void executeCheck();
 
 void InitGameScreenWindow(GAMESTATE &gameState, int playerNum);
 void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyNotTurn);
@@ -313,6 +319,10 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
 
         // Wrapup
         return;
+    }
+
+    gboolean ShortFreeze(gpointer na){
+        return FALSE;
     }
 
 
@@ -698,19 +708,62 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
 
         // Wrapup:  Determine whether to run the loop again
         if(officialGameState.playerTurn == playerLoginInfo.playerNum){
+            printf("\n\nYour turn!\n\n");
+            if(playerLoginInfo.playerType == Computer){
+                g_timeout_add(1000, CompMoveFreeze, NULL);
+            }
             return FALSE; // stop running
         }
         return TRUE; // keep running (still not your turn)
     }
+    gboolean CompMoveFreeze(gpointer na){
+        // Computer's turn to start -- commenting this out for now
+        if(officialGameState.playerTurn == playerLoginInfo.playerNum && playerLoginInfo.playerType == Computer){
+            // g_timeout_add(500, ShortFreeze, NULL);
+            int decision = decideAction(officialGameState, playerLoginInfo.playerNum);
+            printf("\n====================\n");
+            printf("COMPUTER DECISION:  %d", decision);
+            printf("\n====================\n\n");
+            // g_timeout_add(500, ShortFreeze, NULL);
+            if(decision == Fold){
+                executeFold();
+            } else if(decision == Check){
+                executeCheck();
+            } else if(decision == Call){
+                executeCall();
+            } else if(decision == Raise){
+                executeCompRaise(0);
+            } else{
+                executeFold(); // not recognized...just default
+            }
 
-    void defaultButtonClick(GtkWidget *button, gpointer clickData){
-        printf("A button was clicked!\n");
+        } else{
+            printf("ERROR:  Computer prompted for move, but it seems like either this player isn't a computer or it isn't the computer's turn.\n");
+        }
+        return FALSE;
     }
-    void callClick(GtkWidget *button, gpointer clickData){
+
+    void executeFold(){
+        // Valid fold
+        officialGameState.players[playerLoginInfo.playerNum].isInHand = 0;
+
+        // Wrapup
+        gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "");
+        UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
+        ServerGameStateWrite(officialGameState);
+        g_timeout_add(750, WaitTurnFreeze, NULL);
+    }
+
+    void executeCall(){
         int proposedCall = officialGameState.callAmount - officialGameState.players[playerLoginInfo.playerNum].bet;
         printf("Proposed call amount:  %d\nPlayer's current score:  %d\n", proposedCall, officialGameState.players[playerLoginInfo.playerNum].score);
+        
+        // Invalid call
         if(proposedCall >= officialGameState.players[playerLoginInfo.playerNum].score || proposedCall == 0){
             gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  call.  \nCall must be used to match the current bet and cannot be used for all in.  \nPlease try again.");
+            if(playerLoginInfo.playerType == Computer){
+                executeFold();
+            }
             return;
         }
 
@@ -724,6 +777,55 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
         UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
         ServerGameStateWrite(officialGameState);
         g_timeout_add(500, WaitTurnFreeze, NULL);
+    }
+    void executeCompRaise(int compRaise){
+        int raiseAmount = 0; // ZZZ:  FIX THIS!!!!
+        int proposedRaise = officialGameState.callAmount + raiseAmount - officialGameState.players[playerLoginInfo.playerNum].bet; // full bet minus what has already been bet
+
+        if(raiseAmount <= 0 || proposedRaise >= officialGameState.players[playerLoginInfo.playerNum].score){
+            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  raise.  \nRaise must be used to match the current bet + some extra (extra specified by user), \nand it cannot be used for all in.  Please try again.");
+            executeFold();
+            return;
+        }
+
+        // Valid raise
+        officialGameState.greatest = officialGameState.playerTurn; // new greatest better
+        officialGameState.players[playerLoginInfo.playerNum].bet += proposedRaise;
+        officialGameState.players[playerLoginInfo.playerNum].score -= proposedRaise;
+        officialGameState.pot += proposedRaise;
+        officialGameState.callAmount += raiseAmount;
+
+        // Wrapup
+        gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "");
+        UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
+        ServerGameStateWrite(officialGameState);
+        g_timeout_add(750, WaitTurnFreeze, NULL);
+    }
+
+    void executeCheck(){
+        // Player can check if and only if the player has in total bet the same amount as the call amount
+        if(officialGameState.players[playerLoginInfo.playerNum].bet != officialGameState.callAmount){
+            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  check.  \nPlayers can only check when their total bet matches the current call amount.  \nPlease try again.");
+            if(playerLoginInfo.playerType == Computer){
+                executeFold();
+            }
+            return;
+        }
+
+        // Valid check
+
+        // Wrapup
+        gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "");
+        UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
+        ServerGameStateWrite(officialGameState);
+        g_timeout_add(750, WaitTurnFreeze, NULL);
+    }
+
+    void defaultButtonClick(GtkWidget *button, gpointer clickData){
+        printf("A button was clicked!\n");
+    }
+    void callClick(GtkWidget *button, gpointer clickData){
+        executeCall();
     }
     void raiseClick(GtkWidget *button, gpointer clickData){
         const char *raise; 
@@ -750,29 +852,10 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
         g_timeout_add(750, WaitTurnFreeze, NULL);
     }
     void foldClick(GtkWidget *button, gpointer clickData){
-        // Valid fold
-        officialGameState.players[playerLoginInfo.playerNum].isInHand = 0;
-
-        // Wrapup
-        gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "");
-        UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
-        ServerGameStateWrite(officialGameState);
-        g_timeout_add(750, WaitTurnFreeze, NULL);
+        executeFold();
     }
     void checkClick(GtkWidget *button, gpointer clickData){
-        // Player can check if and only if the player has in total bet the same amount as the call amount
-        if(officialGameState.players[playerLoginInfo.playerNum].bet != officialGameState.callAmount){
-            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  check.  \nPlayers can only check when their total bet matches the current call amount.  \nPlease try again.");
-            return;
-        }
-
-        // Valid check
-
-        // Wrapup
-        gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "");
-        UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
-        ServerGameStateWrite(officialGameState);
-        g_timeout_add(750, WaitTurnFreeze, NULL);
+        executeCheck();
     }
 
     void InitGameScreenWindow(GAMESTATE &gameState, int playerNum){
@@ -947,9 +1030,17 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
                 gtk_widget_hide(gameWindow.ShutdownButton);
             }
 
-        if(officialGameState.playerTurn != playerLoginInfo.playerNum){ // not player's turn--start waiting
+        
+        // IMPORTANT:  Wrapup--setting listeners for player turns
+
+        // Computer's turn to start
+        if(officialGameState.playerTurn == playerLoginInfo.playerNum && playerLoginInfo.playerType == Computer){
+            g_timeout_add(1000, CompMoveFreeze, NULL);
+        }
+        else if(officialGameState.playerTurn != playerLoginInfo.playerNum){ // not player's turn--start waiting
             g_timeout_add(500, WaitTurnFreeze, NULL);
         }
+
         
     }
 

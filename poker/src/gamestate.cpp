@@ -150,7 +150,21 @@
 
 // Sam and David's functions
 
+int isRoundContinued(GAMESTATE gameState){
+    for(unsigned int i = 0; i<gameState.players.size(); i++){
+        // Ignore cases where player has gone all in or has folded
+        if(gameState.players[i].isInHand == 0 || gameState.players[i].score == 0){
+            continue;
+        }
 
+        // Round still continues if not all players have had a chance to match the highest bet
+        if(gameState.players[i].bet < gameState.callAmount){
+            return 1;
+        }
+    }
+
+    return 0;
+}
 
 GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify pot, call amount, player.isInHand, player.bet, player.score, and player.greatest; they do not modify the round number or player turn
     GAMESTATE answer = recvGameState;
@@ -180,16 +194,10 @@ GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify 
 
     }
 
-    // Updating player turn (but skipping over players who have folded)
-    do{
-        answer.playerTurn = (answer.playerTurn == answer.numPlayers - 1) ? 0 : answer.playerTurn+1;
-    } while(answer.players[answer.playerTurn].isInHand == 0 || answer.players[answer.playerTurn].score == 0); // skipping players if they went all in
-    
-    
 
     // Case 1:  Going to the next round
     // ZZZ:  FIX THIS!  THIS DOES NOT WORK FOR CHECKING IN THE PREFLOP ROUND
-    if(answer.playerTurn == answer.greatest){ // gone through a full loop - go to next round
+    if(!isRoundContinued(answer)){ // gone through a full loop - go to next round
         if(answer.round == Preflop){ answer = flopUpdate(answer); }
         else if(answer.round == Flop){ answer = turnUpdate(answer); }
         else if(answer.round == Turn){ answer = riverUpdate(answer); }
@@ -198,6 +206,10 @@ GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify 
     }
 
     // Case 2:  Not going to the next round
+    // Updating player turn (but skipping over players who have folded)
+    do{
+        answer.playerTurn = (answer.playerTurn == answer.numPlayers - 1) ? 0 : answer.playerTurn+1;
+    } while(answer.players[answer.playerTurn].isInHand == 0 || answer.players[answer.playerTurn].score == 0); // skipping players if they went all in
     return answer;
 }
 

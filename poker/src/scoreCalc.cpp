@@ -570,7 +570,7 @@ int isOnePair(PILES piles, int playerNum) {
 } // Im not sure how the scoring works but if I don't give 8000 we can't consider thirdKicker 
   // lmk how the scoring works of fit these so that it works plz
 
-int flush(PILES piles, int playerNum) {
+int isFlush(PILES piles, int playerNum) {
     int playerNumBase = playerNum;
 
     if(piles.size() < 3 || playerNumBase < 0 || (unsigned)playerNumBase >= piles.size() - 2) {
@@ -621,7 +621,7 @@ int flush(PILES piles, int playerNum) {
     return 0;
 }
 
-int straight(PILES piles, int playerNum){
+int isStraight(PILES piles, int playerNum){
     int playerNumBase = playerNum;
 
     PILE hand = piles[playerNumBase];
@@ -682,7 +682,7 @@ int straight(PILES piles, int playerNum){
 } 
 
  // only compares highest two high card better be more but also I mentioned not sure bout how the scoring works may needs to be changed how the figure highest card set on the table
-int highcard(PILES piles, int playerNum) {
+int isHighCard(PILES piles, int playerNum) {
     int playerNumBase = playerNum;
 
     PILE hand = piles[playerNumBase];
@@ -736,10 +736,10 @@ int scoreHand(PILES piles, int playerNum) {
     score = isFullHouse(piles, playerNum);
     if(score > best) best = score;
 
-    score = flush(piles, playerNum);
+    score = isFlush(piles, playerNum);
     if(score > best) best = score;
 
-    score = straight(piles, playerNum);
+    score = isStraight(piles, playerNum);
     if(score > best) best = score;
 
     score = isThreeKind(piles, playerNum);
@@ -751,7 +751,7 @@ int scoreHand(PILES piles, int playerNum) {
     score = isOnePair(piles, playerNum);
     if(score > best) best = score;
 
-    score = highcard(piles, playerNum);
+    score = isHighCard(piles, playerNum);
     if(score > best) best = score;
 
     return best;
@@ -785,4 +785,21 @@ int makeScore(int hand, int max, int second, int third, int fourth, int fifth) {
            third  * 0x000100 +
            fourth * 0x000010 +
            fifth;
+}
+
+int handhierarchy(PILES piles, int playerNum){
+    std::vector<int> scores;
+    scores.push_back(isRoyalFlush(piles,playerNum));
+    scores.push_back(isStraightFlush(piles,playerNum));
+    scores.push_back(isAnteaterPair(piles,playerNum));
+    scores.push_back(isFourKind(piles,playerNum));
+    scores.push_back(isFullHouse(piles,playerNum));
+    scores.push_back(isFlush(piles,playerNum));
+    scores.push_back(isStraight(piles,playerNum));
+    scores.push_back(isThreeKind(piles,playerNum));
+    scores.push_back(isTwoPair(piles,playerNum));
+    scores.push_back(isOnePair(piles,playerNum));
+    scores.push_back(isHighCard(piles,playerNum));
+    sort(scores.begin(), scores.end());
+    return scores[scores.size()-1];
 }

@@ -26,7 +26,10 @@ typedef std::string String;
         Computer = 2
     };
 
-    enum SpecialBets{
+    enum SpecialBets{ // call, raise negative to prevent any possible conflicts (used for compu code)
+        Call = -2,
+        Raise = -3,
+        AllIn = -4,
         Check = 0,
         Fold = -1
     };
