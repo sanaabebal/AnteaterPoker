@@ -126,6 +126,9 @@ gamestate.o:  ./src/gamestate.cpp $(SHARED) ./src/gamestate.hpp
 ./bin/testClientCommW9:  testClientCommW9.o cards.o DataTransfer.o
 	g++ -Wall testClientCommW9.o cards.o DataTransfer.o -o ./bin/testClientCommW9 $(GTK_LIBS)
 
+./bin/testBotDecision: testBotDecisions.o botDecisions.o cards.o scoreCalc.o gamestate.o
+	g++ -Wall testBotDecicions.o botDecisions.o cards.o scoreCalc.o gamestate.o -o ./bin/testBotDecisions
+
 # Testing object files
 testCards.o:  ./src/testCards.cpp $(SHARED)
 	$(OBJ) ./src/testCards.cpp -o testCards.o
@@ -143,11 +146,10 @@ botDecisions.o: ./src/botDecisions.cpp ./src/botDecisions.hpp $(SHARED) ./src/sc
 	$(OBJ) ./src/botDecisions.cpp -o botDecisions.o
 
 scoreCalc.o: ./src/scoreCalc.cpp ./src/scoreCalc.hpp $(SHARED) 
-	$(OBJ) ./src/scoreCalc.cpp ./src/scoreCalc.o
+	$(OBJ) ./src/scoreCalc.cpp -o scoreCalc.o
 
 testBotDecisions.o: ./src/testBotDecisions.cpp ./src/testBotDecisions.hpp $(SHARED)
 	$(OBJ) ./src/testBotDecisions.cpp -o testBotDecisions.o
-
 
 
 # Tar instructions
