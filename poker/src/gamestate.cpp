@@ -150,7 +150,8 @@
 
 // Sam and David's functions
 
-int isRoundContinued(GAMESTATE gameState){
+/* NOT WORKING
+int isRoundContinued(GAMESTATE gameState, std::vector<int> hasActed){
     for(unsigned int i = 0; i<gameState.players.size(); i++){
         // Ignore cases where player has gone all in or has folded
         if(gameState.players[i].isInHand == 0 || gameState.players[i].score == 0){
@@ -158,6 +159,9 @@ int isRoundContinued(GAMESTATE gameState){
         }
 
         // Round still continues if not all players have had a chance to match the highest bet
+        if(){
+
+        }
         if(gameState.players[i].bet < gameState.callAmount){
             return 1;
         }
@@ -165,10 +169,14 @@ int isRoundContinued(GAMESTATE gameState){
 
     return 0;
 }
+*/
+
 
 GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify pot, call amount, player.isInHand, player.bet, player.score, and player.greatest; they do not modify the round number or player turn
     GAMESTATE answer = recvGameState;
     answer.numPlayers = answer.players.size();
+
+    // static std::vector<int> hasActed(answer.players.size(), 0); // NOT WORKING
 
     // Checking there is more than one player left in the round
     int numLeft = 0;
@@ -196,8 +204,13 @@ GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify 
 
 
     // Case 1:  Going to the next round
+    // Updating player turn (but skipping over players who have folded)
+    do{
+        answer.playerTurn = (answer.playerTurn == answer.numPlayers - 1) ? 0 : answer.playerTurn+1;
+    } while(answer.players[answer.playerTurn].isInHand == 0 || answer.players[answer.playerTurn].score == 0); // skipping players if they went all in
+
     // ZZZ:  FIX THIS!  THIS DOES NOT WORK FOR CHECKING IN THE PREFLOP ROUND
-    if(!isRoundContinued(answer)){ // gone through a full loop - go to next round
+    if(answer.playerTurn == answer.greatest){ // gone through a full loop - go to next round
         if(answer.round == Preflop){ answer = flopUpdate(answer); }
         else if(answer.round == Flop){ answer = turnUpdate(answer); }
         else if(answer.round == Turn){ answer = riverUpdate(answer); }
@@ -206,10 +219,6 @@ GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify 
     }
 
     // Case 2:  Not going to the next round
-    // Updating player turn (but skipping over players who have folded)
-    do{
-        answer.playerTurn = (answer.playerTurn == answer.numPlayers - 1) ? 0 : answer.playerTurn+1;
-    } while(answer.players[answer.playerTurn].isInHand == 0 || answer.players[answer.playerTurn].score == 0); // skipping players if they went all in
     return answer;
 }
 

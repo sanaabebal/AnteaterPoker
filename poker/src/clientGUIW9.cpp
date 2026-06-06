@@ -200,10 +200,10 @@ typedef struct gamewindow{
             GtkWidget *commCards[5];
 
     GtkWidget *playerInputBox;
-        GtkWidget *callButton;
-        GtkWidget *raiseBox;
-            GtkWidget *raiseButton;
-            GtkWidget *raiseEntry;
+        GtkWidget *allInButton;
+        GtkWidget *betBox;
+            GtkWidget *betButton;
+            GtkWidget *betEntry;
         GtkWidget *foldButton;
         GtkWidget *checkButton;
         GtkWidget *InputError;
@@ -821,29 +821,27 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
         g_timeout_add(750, WaitTurnFreeze, NULL);
     }
 
-    void defaultButtonClick(GtkWidget *button, gpointer clickData){
-        printf("A button was clicked!\n");
-    }
-    void callClick(GtkWidget *button, gpointer clickData){
-        executeCall();
-    }
-    void raiseClick(GtkWidget *button, gpointer clickData){
-        const char *raise; 
-        raise = gtk_entry_get_text(GTK_ENTRY(gameWindow.raiseEntry));
-        int raiseAmount = atoi(raise);
-        int proposedRaise = officialGameState.callAmount + raiseAmount - officialGameState.players[playerLoginInfo.playerNum].bet; // full bet minus what has already been bet
+    void executeBet(){
+        const char *bet; 
+        bet = gtk_entry_get_text(GTK_ENTRY(gameWindow.betEntry));
+        int betAmount = atoi(bet);
+        int oldBetAmount = officialGameState.players[playerLoginInfo.playerNum].bet;
+        //int proposedRaise = officialGameState.callAmount + raiseAmount - officialGameState.players[playerLoginInfo.playerNum].bet; // full bet minus what has already been bet
 
-        if(raiseAmount <= 0 || proposedRaise >= officialGameState.players[playerLoginInfo.playerNum].score){
-            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  raise.  \nRaise must be used to match the current bet + some extra (extra specified by user), \nand it cannot be used for all in.  Please try again.");
+        if(betAmount <= 0 || betAmount >= officialGameState.players[playerLoginInfo.playerNum].score
+            || betAmount + oldBetAmount < officialGameState.callAmount){
+            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  bet.  \nBet must be used to match or exceed the current call amount, \nand it cannot be used for all in.  Please try again.");
             return;
         }
 
-        // Valid raise
-        officialGameState.greatest = officialGameState.playerTurn; // new greatest better
-        officialGameState.players[playerLoginInfo.playerNum].bet += proposedRaise;
-        officialGameState.players[playerLoginInfo.playerNum].score -= proposedRaise;
-        officialGameState.pot += proposedRaise;
-        officialGameState.callAmount += raiseAmount;
+        // Valid bet
+        if(betAmount + oldBetAmount > officialGameState.callAmount){
+            officialGameState.greatest = officialGameState.playerTurn; // new greatest better
+            officialGameState.callAmount = betAmount + oldBetAmount;
+        }
+        officialGameState.players[playerLoginInfo.playerNum].bet += betAmount;
+        officialGameState.players[playerLoginInfo.playerNum].score -= betAmount;
+        officialGameState.pot += betAmount;
 
         // Wrapup
         gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "");
@@ -851,11 +849,49 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
         ServerGameStateWrite(officialGameState);
         g_timeout_add(750, WaitTurnFreeze, NULL);
     }
+
+    void executeAllIn(){
+        if(officialGameState.players[playerLoginInfo.playerNum].score <= 0){
+            gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "Illegal move:  all in.  \nPlayer must have money for all in.  Please try again.");
+            return;
+        }
+
+        // Valid all in
+        int betAmount = officialGameState.players[playerLoginInfo.playerNum].score;
+        int oldBetAmount = officialGameState.players[playerLoginInfo.playerNum].bet;
+        if(betAmount + oldBetAmount > officialGameState.callAmount){
+            officialGameState.greatest = officialGameState.playerTurn;
+            officialGameState.callAmount = betAmount + oldBetAmount;
+        }
+        officialGameState.players[playerLoginInfo.playerNum].score = 0;
+        officialGameState.players[playerLoginInfo.playerNum].bet += betAmount;
+
+        officialGameState.pot += betAmount;
+
+        // Wrapup
+        gtk_label_set_text(GTK_LABEL(gameWindow.InputError), "");
+        UpdateGameScreenWindow(officialGameState, playerLoginInfo.playerNum, 1);
+        ServerGameStateWrite(officialGameState);
+        g_timeout_add(750, WaitTurnFreeze, NULL);
+    }
+
+    
+    void defaultButtonClick(GtkWidget *button, gpointer clickData){
+        printf("A button was clicked!\n");
+    }
     void foldClick(GtkWidget *button, gpointer clickData){
         executeFold();
     }
     void checkClick(GtkWidget *button, gpointer clickData){
         executeCheck();
+    }
+
+    void betClick(GtkWidget *button, gpointer clickData){
+        executeBet();
+    }
+
+    void allInClick(GtkWidget *button, gpointer clickData){
+        executeAllIn();
     }
 
     void InitGameScreenWindow(GAMESTATE &gameState, int playerNum){
@@ -921,9 +957,9 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
 
         
         // Player input entries
-            gameWindow.callButton = gtk_button_new_with_label("Call");
-            gameWindow.raiseButton = gtk_button_new_with_label("Confirm Raise");
-            gameWindow.raiseEntry = gtk_entry_new();
+            gameWindow.allInButton = gtk_button_new_with_label("All In");
+            gameWindow.betButton = gtk_button_new_with_label("Confirm Bet");
+            gameWindow.betEntry = gtk_entry_new();
             gameWindow.foldButton = gtk_button_new_with_label("Fold");
             gameWindow.checkButton = gtk_button_new_with_label("Check");
             gameWindow.InputError = gtk_label_new("");
@@ -989,11 +1025,11 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
                 gameWindow.playerInputBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
                 gtk_box_pack_start(GTK_BOX(gameWindow.movesAndLogBox), gameWindow.playerInputBox, FALSE, TRUE, 2);
                 
-                gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.callButton, FALSE, FALSE, 2);
-                gameWindow.raiseBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
-                gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.raiseBox, FALSE, FALSE, 2);
-                gtk_box_pack_start(GTK_BOX(gameWindow.raiseBox), gameWindow.raiseEntry, FALSE, FALSE, 2);
-                gtk_box_pack_start(GTK_BOX(gameWindow.raiseBox), gameWindow.raiseButton, FALSE, FALSE, 2);
+                gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.allInButton, FALSE, FALSE, 2);
+                gameWindow.betBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+                gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.betBox, FALSE, FALSE, 2);
+                gtk_box_pack_start(GTK_BOX(gameWindow.betBox), gameWindow.betEntry, FALSE, FALSE, 2);
+                gtk_box_pack_start(GTK_BOX(gameWindow.betBox), gameWindow.betButton, FALSE, FALSE, 2);
                 gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.foldButton, FALSE, FALSE, 2);
                 gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.checkButton, FALSE, FALSE, 2);
                 gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.InputError, FALSE, FALSE, 2);
@@ -1005,8 +1041,8 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
             
         
         /*   Activating buttons   */
-            g_signal_connect(gameWindow.callButton, "clicked", G_CALLBACK(callClick), NULL);
-            g_signal_connect(gameWindow.raiseButton, "clicked", G_CALLBACK(raiseClick), NULL);
+            g_signal_connect(gameWindow.allInButton, "clicked", G_CALLBACK(allInClick), NULL);
+            g_signal_connect(gameWindow.betButton, "clicked", G_CALLBACK(betClick), NULL);
             g_signal_connect(gameWindow.foldButton, "clicked", G_CALLBACK(foldClick), NULL);
             g_signal_connect(gameWindow.checkButton, "clicked", G_CALLBACK(checkClick), NULL);
             g_signal_connect(gameWindow.helpMenuButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
@@ -1022,9 +1058,9 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
 
         // Hiding items if they are not supposed to be visible yet (i.e. not player's turn at start)
             if(gameState.playerTurn != playerLoginInfo.playerNum){
-                gtk_widget_hide(gameWindow.callButton);
-                gtk_widget_hide(gameWindow.raiseButton);
-                gtk_widget_hide(gameWindow.raiseEntry);
+                gtk_widget_hide(gameWindow.allInButton);
+                gtk_widget_hide(gameWindow.betButton);
+                gtk_widget_hide(gameWindow.betEntry);
                 gtk_widget_hide(gameWindow.foldButton);
                 gtk_widget_hide(gameWindow.checkButton);
                 gtk_widget_hide(gameWindow.ShutdownButton);
@@ -1146,16 +1182,16 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
         // Player input entries (controlling display)
         // Do NOT show the display if it is definitely not the player's turn, if the player is a computer player, if it is not the player's turn, or if the player is not in the hand
         if(definitelyNotTurn || playerLoginInfo.playerType == Computer || officialGameState.playerTurn != playerLoginInfo.playerNum || officialGameState.players[playerLoginInfo.playerNum].isInHand == 0){
-            gtk_widget_hide(gameWindow.callButton);
-            gtk_widget_hide(gameWindow.raiseButton);
-            gtk_widget_hide(gameWindow.raiseEntry);
+            gtk_widget_hide(gameWindow.allInButton);
+            gtk_widget_hide(gameWindow.betButton);
+            gtk_widget_hide(gameWindow.betEntry);
             gtk_widget_hide(gameWindow.foldButton);
             gtk_widget_hide(gameWindow.checkButton);
             gtk_widget_hide(gameWindow.ShutdownButton);
         } else{
-            gtk_widget_show(gameWindow.callButton);
-            gtk_widget_show(gameWindow.raiseButton);
-            gtk_widget_show(gameWindow.raiseEntry);
+            gtk_widget_show(gameWindow.allInButton);
+            gtk_widget_show(gameWindow.betButton);
+            gtk_widget_show(gameWindow.betEntry);
             gtk_widget_show(gameWindow.foldButton);
             gtk_widget_show(gameWindow.checkButton);
             gtk_widget_show(gameWindow.ShutdownButton);
