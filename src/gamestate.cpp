@@ -218,7 +218,7 @@ GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify 
 GAMESTATE startRound(GAMESTATE gameState){ // NOTE:  startRound() calls endRoundChecks() at the beginning -- endRoundChecks() should NOT be called directly except through this function
     GAMESTATE answer = endRoundChecks(gameState);
     answer.numPlayers = answer.players.size(); // just in case
-
+ 
     if(answer.numPlayers == 0){
         printf("Hmmm...there are no players left!\n");
         return answer;
@@ -230,12 +230,14 @@ GAMESTATE startRound(GAMESTATE gameState){ // NOTE:  startRound() calls endRound
         return answer;
     }
 
+
     answer.pot = 0;
     answer.callAmount = 0;
     answer.dealerPlayer = (answer.dealerPlayer == answer.numPlayers-1) ? 0 : answer.dealerPlayer + 1;
     
     for(unsigned int i=0; i<answer.players.size(); i++){
         answer.players[i].bet = 0;
+        answer.players[i].total_bet=0;
         answer.players[i].isInHand = 1;
     }
 
@@ -524,7 +526,7 @@ GAMESTATE showdownUpdate(GAMESTATE gameState){
 
         answer.players[winner].score+=split; //allocation
     } 
-
+    
     answer.pot = 0;
 
     return answer;
