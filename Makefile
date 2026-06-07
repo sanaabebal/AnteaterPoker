@@ -7,10 +7,12 @@ LIBS = $(shell pkg-config --libs gtk+-3.0)
 PORT = 10080
 HOST = 127.0.0.1
 
-SHAREDSRCS = src/cards.cpp src/DataTransfer.cpp 
+SHAREDSRCS = src/cards.cpp src/DataTransfer.cpp
+GAMESTATEOBJ = src/gamestate.o # CODEX FIX: serverGUI.cpp calls startRound()/updateGameState(), so gamestate.o must be linked.
+SCORECALCOBJ = src/scoreCalc.o # CODEX FIX: showdownUpdate() calls scoreHand(), so scoreCalc.o must be linked.
 
 # compiling all the shared sources
-SHAREDOBJS = $(SHAREDSRCS:.cpp=.o)
+SHAREDOBJS = $(SHAREDSRCS:.cpp=.o) $(GAMESTATEOBJ) $(SCORECALCOBJ) # CODEX FIX: include game-state and scoring logic in both link commands.
 
 SCREENSRCS = src/loginScreen.cpp src/hostScreen.cpp src/joinScreen.cpp src/pokerScreen.cpp src/gameOverScreen.cpp
 SCREENOBJS = $(SCREENSRCS:.cpp=.o)
