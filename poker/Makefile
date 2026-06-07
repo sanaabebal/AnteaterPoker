@@ -28,7 +28,7 @@ test:  ./bin/testCards ./bin/testData ./bin/testAlphaServer ./bin/testAlphaClien
 # bin/testServerCommW9 &
 # bin/testClientCommW9
 
-test-gui test_gui:  bin/testGUIW9 bin/display1 bin/display2 bin/display3 bin/display4
+test-gui test_gui:  bin/testGUIW9 bin/display1 bin/display2 bin/display4
 	@echo ""
 	@echo ""
 	@echo "Testing client GUI for game"
@@ -38,7 +38,6 @@ test-gui test_gui:  bin/testGUIW9 bin/display1 bin/display2 bin/display3 bin/dis
 	@echo "Desired client GUI for game"
 	bin/display1
 	bin/display2
-	bin/display3
 	bin/display4
 
 # @echo "---------PLEASE RUN bin/testAlphaClientGUI serverName 10080 IF YOU ARE NOT USING THE BONDI SERVER--------"

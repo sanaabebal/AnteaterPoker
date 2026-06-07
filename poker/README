@@ -14,21 +14,27 @@ Getting Started:
 
 **********************************************************
 Version 1.0 Notes:
+
+Starting / Login:  
 * The program is intended to direct the player to a login screen, then a wait screen, then a game screen where they can play once all players have connected.
 * In the event that the server is refusing to initialize because it says the port is already in use, please use the following commands (or wait a few minutes for the port to clear again):
         bin/poker_server 10081  # or any port number in the range 10081 - 10089
         bin/poker_client serverName 10081 # or the same port numbre in the range 10081 - 10089
 * Multiple players can log on, but they must log on one at a time.  If multiple players have the login screen open (i.e. have the GUI open but have not reached the wait screen yet), the info they will have will be out of date (the program works by sending login data once to the client when they open the program, and then the client sends the updated version back to the server; the server can then send this updated version to the next client who connects, and so on)
 * The wait screen may freeze after three seconds due to how the client program waits for its next instructions from the server.  It should unfreeze once all players log on.  If it does not or the player needs to exit the program, use Control + C in the command line.
-* Likewise, players will not be able to close the window during the game--the only way to end the game is to close the server directly.
 * The user must use -X when logging onto the EECS server for the GTK display to work.
-* To shut down the game, go to the server window and click down "Shutdown Server," and use Control + C on the server terminal window.  It isn't the cleanest method of shutting down the game, but it will work.
+
+Game Flow:
+* Likewise, players will not be able to close the window during the game--the only way to end the game is to close the server directly.
+* Betting works by increasing the total bet made by a player in a round (the total bet is part of the player display); the increase is directly determined by player input (i.e. if player inputs 1 for bet, it will increase their total bet by 1)
 * Side pots are not created in the event a player goes all in--instead, the player who goes all in does not continue betting in the hand, and they can win the full pot.
 * If a player does not have enough money to cover their blind at the beginning of a round, they are eliminated.
 * Checking may not always work as intended.
+* To shut down the game, go to the server window and click down "Shutdown Server," and use Control + C on the server terminal window.  It isn't the cleanest method of shutting down the game, but it will work.
 * Cases involving up to four players have been tested.  Beyond that, there is a possible risk that the program will crash due to how reading/writing server/client communications work.
-* Unfortunately, we were unable to put the more advanced GUI systems in our program.  However, these can be seen in "make test-gui".
 
+Other Notes:
+* Unfortunately, we were unable to put the more advanced GUI systems in our program.  However, these can be seen in "make test-gui".
 * Please see Week8_AlphaVersion directory for git commit history
 
 **********************************************************
