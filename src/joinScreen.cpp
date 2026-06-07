@@ -42,6 +42,13 @@ static const char* joinCSS = R"CSS(
     font-size: 11px;
     font-weight: bold;
 }
+/* CODEX FIX: added a visible join error style for bad password/no-slot feedback. */
+.js-error {
+    color: #8a1f1f;
+    font-family: "Georgia", serif;
+    font-size: 11px;
+    font-weight: bold;
+}
 .js-player-row {
     color: #2c1f0e;
     font-family: "Georgia", serif;
@@ -165,13 +172,22 @@ void joinScreen::buildUI() {
     gtk_widget_set_size_request(slotCombo, 200, -1);
     gtk_box_pack_start(GTK_BOX(left), slotCombo, FALSE, FALSE, 0);
 
+    // CODEX FIX: add an inline error label so join failures are visible to the player.
+    errorLabel = gtk_label_new("");
+    // CODEX FIX: attach the error CSS class added above.
+    gtk_style_context_add_class(gtk_widget_get_style_context(errorLabel), "js-error");
+    // CODEX FIX: keep join error messages aligned with the other form controls.
+    gtk_widget_set_halign(errorLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(left), errorLabel, FALSE, FALSE, 0);
+
     GtkWidget *spacing = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_widget_set_vexpand(spacing, TRUE);
     gtk_box_pack_start(GTK_BOX(left), spacing, TRUE, TRUE, 0);
-
     // Confirm Join Button
     confirmButton = gtk_button_new_with_label("Confirm Join Request");
     gtk_widget_set_name(confirmButton, "js-invite");
+    // CODEX FIX: attach the existing .js-confirm style; js-invite had no matching CSS rule.
+    gtk_style_context_add_class(gtk_widget_get_style_context(confirmButton), "js-confirm");
     gtk_widget_set_size_request(confirmButton, 200, 52);
     gtk_box_pack_start(GTK_BOX(left), confirmButton, FALSE, FALSE, 0);
     g_signal_connect(confirmButton, "clicked", G_CALLBACK(onConfirmedJoinClicked), this);
@@ -235,7 +251,7 @@ void joinScreen::applyStyles() {
     g_object_unref(provider);
 }
 
-void joinScreen::playerList(const vector<RegisteredPlayer>& players, int maxPlayers) {
+void joinScreen::playerList(const vector<PLAYER>& players, int maxPlayers) {
     GList *rows = gtk_container_get_children(GTK_CONTAINER(listBox));
     for (GList* i = rows; i; i = i -> next) {
         gtk_widget_destroy(GTK_WIDGET(i -> data));
@@ -254,7 +270,7 @@ void joinScreen::playerList(const vector<RegisteredPlayer>& players, int maxPlay
         };
 
         gtk_box_pack_start(GTK_BOX(row), cell(p.name, 100), FALSE, FALSE, 0);
-        gtk_box_pack_start(GTK_BOX(row), cell(to_string(p.slot), 60), FALSE, FALSE, 0);
+        gtk_box_pack_start(GTK_BOX(row), cell(to_string(p.playerNum), 60), FALSE, FALSE, 0);
         gtk_box_pack_start(GTK_BOX(row), cell("✓", 60), FALSE, FALSE, 0);
 
         GtkWidget *listRow = gtk_list_box_row_new();
@@ -267,12 +283,23 @@ void joinScreen::playerList(const vector<RegisteredPlayer>& players, int maxPlay
 void joinScreen::openSlots(const vector<int>& slots) {
     gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(slotCombo));
     for (int s : slots) {
-        string label = "Slot " + to_string(s);
+        // CODEX FIX: display player-facing slot numbers as 1-based while keeping internal indices 0-based.
+        string label = "Slot " + to_string(s + 1);
         gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(slotCombo), label.c_str());
     }
     if (!slots.empty()) {
         gtk_combo_box_set_active(GTK_COMBO_BOX(slotCombo), 0);
     }
+}
+
+// CODEX FIX: show a clear join-screen error instead of silently ignoring failed joins.
+void joinScreen::showError(const string& message) {
+    gtk_label_set_text(GTK_LABEL(errorLabel), message.c_str());
+}
+
+// CODEX FIX: clear old join-screen errors when the room state refreshes or a join succeeds.
+void joinScreen::clearError() {
+    gtk_label_set_text(GTK_LABEL(errorLabel), "");
 }
 
 void joinScreen::onConfirmedJoinClicked(GtkButton*, gpointer inputData) {
@@ -288,10 +315,27 @@ void joinScreen::onConfirmedJoinClicked(GtkButton*, gpointer inputData) {
     if (activeText != nullptr) {
         string s(activeText);
         if (s.find("Slot ") != string::npos) {
-            selectedSlot = stoi(s.substr(5));
+            // CODEX FIX: convert the 1-based label back to the 0-based playerNum stored in LOGININFO.
+            selectedSlot = stoi(s.substr(5)) - 1;
         }
         g_free(activeText);
     }
+
+    extern LOGININFO playerLoginInfo;
+
+    // Additional logic needed for merging
+    strncpy(playerLoginInfo.playerName, user.c_str(), sizeof(playerLoginInfo.playerName) -1);
+    // CODEX FIX: force termination after strncpy so long names cannot leak old bytes.
+    playerLoginInfo.playerName[sizeof(playerLoginInfo.playerName) - 1] = '\0';
+    strncpy(playerLoginInfo.password, pass.c_str(), sizeof(playerLoginInfo.password)-1);
+    // CODEX FIX: force termination after strncpy so password checks compare the intended text.
+    playerLoginInfo.password[sizeof(playerLoginInfo.password) - 1] = '\0';
+    playerLoginInfo.playerNum = selectedSlot;
+    playerLoginInfo.playerType = Human;
+
+    // CODEX FIX: do not mutate playersFound here; ClientGUI validates password/slot and then sends the server-owned room state.
+
+    //if (!self -> onConfirmedJoin) return;
 
     self->onConfirmedJoin(user, pass, selectedSlot);
 }

@@ -1,8 +1,10 @@
-#ifndef CLIENTGUI
-#define CLIENTGUI
+#ifndef CLIENT_GUI_HPP
+#define CLIENT_GUI_HPP
 
 #pragma once
 #include <gtk/gtk.h>
+#include <vector>
+#include <string>
 #include <memory>
 
 #include "cards.hpp"
@@ -25,6 +27,7 @@ enum class ScreenID {
 
 class ClientGUI {
 public:
+
     ClientGUI(int argc, char** argv);
     ~ClientGUI();
 
@@ -32,48 +35,55 @@ public:
 
     void show(ScreenID id);
 
-    void updateHostPlayerList(const vector<RegisteredPlayer>& players, int maxPlayers);
-    void updateJoinPlayerList(const vector<string>& names,
-                              const vector<int>& slots, int maxPlayers);
+    void updateHostPlayerList(const vector<PLAYER>& players, int maxPlayers);
+    void updateJoinPlayerList(const vector<PLAYER>& players, int maxPlayers);
     void setAvailableSlots(const vector<int>& slots);
-    void updateGameState(const vector<PlayerInfo>& players,
-                         const vector<Card>& community,
-                         const vector<Card>& hole,
-                         int pot, int currentBet, int localStack);
+    void updateGameState(const vector<PLAYER>& players, const vector<Card>& community,
+                         const vector<Card>& hole, int pot, int currentBet, int localStack,
+                         int playerTurn, int dealerTurn);
+
     void setGameActions(bool enabled);
-    void setResults(const vector<FinalPlayerResult>& results,
-                            const SessionSummary& summary);
+    void setResults(const vector<PLAYER>& results, const GAMESTATE& summary);
 
 
-    function<void(const string& username,
-                       const string& password,
-                       int numPlayers)> onHostInvite;
+    function<void(const string& username, const string& password, int numPlayers)> onHostInvite;
     function<void()> onHostLaunch;
-    function<void(const string& username,
-                       const string& password,
-                       int slot)> onJoinConfirm;
+    function<void(const string& username,const string& password, int slot)> onJoinConfirm;
     function<void()> onFold;
     function<void()> onCheck;
     function<void(int amount)> onBet;
+    function<void()> onAllIn;
     function<void()> onPlayAgain;
     function<void()> onExitToLobby;
 
 private:
-    GtkWidget* window;
-    GtkWidget* stack;   
-
-    unique_ptr<loginScreen> mainMenu;
-    unique_ptr<HostScreen> hostScreen;
-    unique_ptr<JoinScreen> joinScreen;
-    unique_ptr<PokerScreen> gameScreen;
-    unique_ptr<GameOverScreen> gameOverScreen;
 
     void buildWindow(int argc, char** argv);
     void wireCallbacks();
+    // CODEX FIX: refresh the host lobby list from the server while waiting for players.
+    void refreshHostLobby();
+    // CODEX FIX: poll for the host launch while a joined player is waiting in the lobby.
+    void pollJoinLaunch();
+    // CODEX FIX: render the server-synced lobby roster on the poker table after launch.
+    void showSyncedPokerTable(const GAMESTATE& state);
+    // CODEX FIX: GTK timeout bridge for host lobby polling.
+    static gboolean onHostLobbyRefresh(gpointer data);
+    // CODEX FIX: GTK timeout bridge for joined-player launch polling.
+    static gboolean onJoinLaunchPoll(gpointer data);
 
     static const char* screenName(ScreenID id);
 
     static void onWindowDestroy(GtkWidget*, gpointer);
+
+    GtkWidget* window;
+    GtkWidget* stack;   
+
+    unique_ptr<loginScreen> loginScreenObject;
+    unique_ptr<hostScreen> hostScreenObject;
+    unique_ptr<joinScreen> joinScreenObject;
+    unique_ptr<pokerScreen> pokerScreenObject;
+    unique_ptr<gameOverScreen> gameOverScreenObject;
+
 };
 
 #endif

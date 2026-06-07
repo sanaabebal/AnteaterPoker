@@ -22,7 +22,8 @@
 #include "cards.hpp"
 #include "data.hpp"
 #include "DataTransfer.hpp"
-#include "stubFunctionsW9.hpp" // FIX THIS!!!
+
+using namespace std;
 
 #define DEFAULT_PORT 10080
 
@@ -46,6 +47,17 @@ GAMESTATE officialGameState;
 // officialLoginInfo.isHost = 1; moving this to start of main function
 PLAYERS players; // will set size of this later with the host specifications
 PILE refDeck; // reference deck (initialized in main)
+
+// CODEX FIX: use named lobby markers so launch/status requests are separate from real game rounds.
+static const int LOBBY_ROSTER_REQUEST = -1;
+// CODEX FIX: marker received when the host clicks Launch New Session.
+static const int LOBBY_START_REQUEST = -2;
+// CODEX FIX: marker received when a joined client asks if the host has launched.
+static const int LOBBY_STATUS_REQUEST = -3;
+// CODEX FIX: lobby-only status flag stored in GAMESTATE.callAmount while waiting.
+static const int LOBBY_GAME_WAITING = 0;
+// CODEX FIX: lobby-only status flag stored in GAMESTATE.callAmount once the host starts the game.
+static const int LOBBY_GAME_STARTED = 1;
 
 
 /*** GUI functions *******************************************************/
@@ -84,9 +96,7 @@ void activePlayers(int totalSeats) {
 
 
 // NEW:  CreateWindow (took old code and modified it to display the desired output)
-GtkWidget *CreateWindow(	/* create the server window */
-	int *argc,
-	char **argv[])
+GtkWidget *CreateWindow (int *argc, char **argv[])
 {
     //GtkWidget *Window;
 
@@ -97,7 +107,7 @@ GtkWidget *CreateWindow(	/* create the server window */
     GtkStyleContext *Context;
 
     // Player information:  Holds player name, socket int if found; otherwise, returns 
-    //GtkWidget *playerH, *player1, *player2, *player3, *player4, *player5, *player6, *player7, *player8, *player9, *player10;
+    //GtkWidget *playerH, *player1, *player2, *player3, *player4, *player5, *player6, *player7, *player8, *player9;
 
     
     /* initialize the GTK libraries */
@@ -114,16 +124,24 @@ GtkWidget *CreateWindow(	/* create the server window */
 
     Provider = gtk_css_provider_new();
     gtk_css_provider_load_from_data(Provider,
-        "window {}\n"
-        "label {}\n"
-        ".header-label {}\n"
-        ".player-card {}\n"
-        "button {}\n"
-        "button:hover {}\n", 
+        /* CODEX FIX: added real server-side CSS so the server window matches the styled client side. */
+        ".server-root, .main-window { background-color: #2b4c54; }\n"
+        ".header-label { color: #f5ecc8; font-family: Georgia, serif; font-size: 18px; font-weight: bold; }\n"
+        ".player-card { background-color: #244348; border: 1px solid #7f956f; padding: 6px; }\n"
+        ".player-label { color: #f5ecc8; font-family: Georgia, serif; font-size: 13px; }\n"
+        ".shutdown-button { background-image: none; background-color: #e8d9a0; color: #2c1f0e; font-family: Georgia, serif; font-size: 13px; border: 2px solid #a08040; padding: 8px 18px; }\n"
+        ".shutdown-button label { color: #2c1f0e; }\n"
+        ".shutdown-button:hover { background-image: none; background-color: #f0e6b8; border-color: #c0a050; }\n",
         -1, NULL );
-    
+
     Context = gtk_widget_get_style_context(Window);
+    // CODEX FIX: attach the class used by the server CSS above.
+    gtk_style_context_add_class(Context, "main-window");
     gtk_style_context_add_provider(Context, GTK_STYLE_PROVIDER(Provider),
+                                     GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    // CODEX FIX: install the CSS for all child widgets, not just the top-level window context.
+    gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
+                                     GTK_STYLE_PROVIDER(Provider),
                                      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
     
     
@@ -131,10 +149,13 @@ GtkWidget *CreateWindow(	/* create the server window */
     /* overall vertical arrangement in the window */
     // VBox = gtk_vbox_new(FALSE, 10);
     VBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    // CODEX FIX: make the server root box use the same visible background as the window.
+    gtk_style_context_add_class(gtk_widget_get_style_context(VBox), "server-root");
     gtk_container_add(GTK_CONTAINER(Window), VBox);
 
     /* on the top, put player 1's info; from there, keep going down the list of players*/
     playerH = gtk_label_new("Player info:  ");
+    // CODEX FIX: make the server heading readable against the teal background.
     gtk_style_context_add_class(gtk_widget_get_style_context(playerH), "header-label");
     gtk_box_pack_start(GTK_BOX(VBox), playerH, FALSE, FALSE, 5);
 
@@ -151,6 +172,8 @@ GtkWidget *CreateWindow(	/* create the server window */
 
 
         player[i] = gtk_label_new(labelBuffer);
+        // CODEX FIX: style each server player label so inactive/active seats are readable.
+        gtk_style_context_add_class(gtk_widget_get_style_context(player[i]), "player-label");
         gtk_box_pack_start(GTK_BOX(playerRows[i]), player[i], TRUE, TRUE, 5);
 
         gtk_box_pack_start(GTK_BOX(VBox), playerRows[i], FALSE, FALSE, 0);
@@ -164,6 +187,8 @@ GtkWidget *CreateWindow(	/* create the server window */
     /* on the bottom, a button to shutdown the server and quit */
     ShutdownButton = gtk_button_new_with_label("Shutdown Server and Quit");
     //gtk_container_add(GTK_CONTAINER(VBox), ShutdownButton);
+    // CODEX FIX: style the server shutdown button instead of leaving the default grey widget.
+    gtk_style_context_add_class(gtk_widget_get_style_context(ShutdownButton), "shutdown-button");
     gtk_style_context_add_provider(gtk_widget_get_style_context(ShutdownButton),
                                     GTK_STYLE_PROVIDER(Provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
@@ -187,6 +212,7 @@ GtkWidget *CreateWindow(	/* create the server window */
 // NEW:  UpdatePlayer (completely new code)
 void UpdatePlayer(LOGININFO loginInfo, int playerSocket){
     char text[200];
+
     int n = loginInfo.playerNum;
     if(n < 0 || n >= 10){
         printf("ERROR:  Tried to update player, but player number is out of range.\n");
@@ -257,7 +283,7 @@ int MakeServerSocket(		/* create a socket on this server */
 
 
 void MessageAllClients(){
-    ssize_t n;
+    streamsize n;
     BUF SendBuf;
     int clientSocket;
 
@@ -274,9 +300,41 @@ void MessageAllClients(){
     return;
 }
 
+// CODEX FIX: check whether every hosted seat has a confirmed player before launch succeeds.
+static int LobbyHasAllPlayers(){
+    if(officialLoginInfo.numPlayers <= 0 || officialLoginInfo.playersFound.empty()){
+        return 0;
+    }
+
+    for(unsigned int i=0; i<officialLoginInfo.playersFound.size(); i++){
+        if(officialLoginInfo.playersFound[i] == 0){
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+// CODEX FIX: mirror login-stage registered players into GAMESTATE for lobby refresh/status replies.
+static void SyncLobbyRosterIntoGameState(){
+    officialGameState.numPlayers = officialLoginInfo.numPlayers;
+    officialGameState.players = players;
+}
+
+// CODEX FIX: write a GAMESTATE response for every lobby sync request so clients do not block.
+static void WriteGameStateResponse(int DataSocketFD, const char* errorMessage){
+    streamsize n = 0;
+    BUF SendBuf = createBuffer(officialGameState);
+
+    n = write(DataSocketFD, SendBuf.data(), SendBuf.size());
+    if(n < 0){
+        FatalError(errorMessage);
+    }
+}
+
 int ProcessClientRequest(int DataSocketFD){
     BUF RecvBuf(2000); /* message buffer for receiving a message -- think the max for login and game is well below 2000 bytes, but using this just in case */
-    ssize_t n = 0;
+    streamsize n = 0;
 
     n = read(DataSocketFD, RecvBuf.data(), RecvBuf.size());
         if (n < 0) 
@@ -307,7 +365,7 @@ void ProcessLoginRequest(		/* process a LOGININFO request by a client --user wil
 	int DataSocketFD, BUF RecvBuf)
 {
         static int foundHost = 0;
-        ssize_t n = 0;
+        streamsize n = 0;
         
         BUF SendBuf; /* message buffer for sending a response */
     
@@ -331,9 +389,10 @@ void ProcessLoginRequest(		/* process a LOGININFO request by a client --user wil
             if(loginInfo.isHost && !foundHost){ // player is host--update the login structure, PLAYERS list accordingly
                 players.resize(loginInfo.numPlayers); // client does NOT do this
 
-                officialLoginInfo.numPlayers = 0;
-                // officialLoginInfo.playersFound.resize(loginInfo.numPlayers); -- assume the client does this (and inserts themselves correctly in the list)
-                
+                officialLoginInfo.numPlayers = loginInfo.numPlayers;
+                // CODEX FIX: server owns the occupancy list after the host creates the room.
+                officialLoginInfo.playersFound = loginInfo.playersFound;
+
                 strcpy(officialLoginInfo.password, loginInfo.password);
 
                 // adding in the active seats of players
@@ -343,10 +402,50 @@ void ProcessLoginRequest(		/* process a LOGININFO request by a client --user wil
                 // Wrapup:  Setting isHost to 0 and foundHost to 1 so this is only ever triggered once
                 officialLoginInfo.isHost = 0;
                 foundHost = 1;
+            } else if(loginInfo.isHost && foundHost){
+                // CODEX FIX: reject duplicate host submissions instead of letting them overwrite the room.
+                SendBuf = createBuffer(officialLoginInfo);
+                n = write(DataSocketFD, SendBuf.data(), SendBuf.size());
+                if(n < 0){
+                    FatalError("Writing data to socket failed");
+                }
+                return;
+            } else{
+                if(!foundHost || officialLoginInfo.numPlayers <= 0){
+                    // CODEX FIX: reject joins before a host has created the room.
+                    SendBuf = createBuffer(officialLoginInfo);
+                    n = write(DataSocketFD, SendBuf.data(), SendBuf.size());
+                    if(n < 0){
+                        FatalError("Writing data to socket failed");
+                    }
+                    return;
+                }
+                if(strcmp(loginInfo.password, officialLoginInfo.password) != 0){
+                    // CODEX FIX: enforce the saved room password on the server too.
+                    printf("Rejected join for player %d: incorrect password.\n", loginInfo.playerNum + 1);
+                    SendBuf = createBuffer(officialLoginInfo);
+                    n = write(DataSocketFD, SendBuf.data(), SendBuf.size());
+                    if(n < 0){
+                        FatalError("Writing data to socket failed");
+                    }
+                    return;
+                }
+                if(loginInfo.playerNum < 0 || loginInfo.playerNum >= (int)officialLoginInfo.playersFound.size()
+                   || officialLoginInfo.playersFound[loginInfo.playerNum] != 0){
+                    // CODEX FIX: reject invalid or occupied slots instead of accepting stale client state.
+                    printf("Rejected join for player %d: slot unavailable.\n", loginInfo.playerNum + 1);
+                    SendBuf = createBuffer(officialLoginInfo);
+                    n = write(DataSocketFD, SendBuf.data(), SendBuf.size());
+                    if(n < 0){
+                        FatalError("Writing data to socket failed");
+                    }
+                    return;
+                }
+                // CODEX FIX: mark only the confirmed joining slot, instead of trusting the client's whole playersFound vector.
+                officialLoginInfo.playersFound[loginInfo.playerNum] = loginInfo.playerType;
+                // CODEX FIX: keep numPlayers server-owned after host setup.
+                loginInfo.numPlayers = officialLoginInfo.numPlayers;
             }
-            // Updating shared aspects btw host and non-host
-            officialLoginInfo.playersFound = loginInfo.playersFound;
-            officialLoginInfo.numPlayers = loginInfo.numPlayers;
 
 
             // Record the player
@@ -361,7 +460,11 @@ void ProcessLoginRequest(		/* process a LOGININFO request by a client --user wil
             } else{
                 FatalError("Invalid player number received");
             }
-            
+            // CODEX FIX: keep the GAMESTATE roster mirror current for host lobby refresh requests.
+            officialGameState.numPlayers = officialLoginInfo.numPlayers;
+            // CODEX FIX: copy registered server-side players into the roster mirror after each accepted login.
+            officialGameState.players = players;
+
             // Wrapup
             UpdatePlayer(loginInfo, DataSocketFD);
 
@@ -371,54 +474,66 @@ void ProcessLoginRequest(		/* process a LOGININFO request by a client --user wil
 } /* end of ProcessRequest */
 
 void ProcessGameStateRequest(int DataSocketFD, BUF RecvBuf){
-     ssize_t n = 0;
-        
-        BUF SendBuf; /* message buffer for sending a response */
-        
-        GAMESTATE gameState;
+    GAMESTATE gameState;
 
-    
     // Handling processed user input
-        gameState = parsingGameArguments(RecvBuf);
-        SendBuf = createBuffer(officialGameState);
+    gameState = parsingGameArguments(RecvBuf);
 
-        if(gameState.numPlayers == 0){ // dummy value--first time the user is connecting to the server regarding this
-            int foundAllPlayers = 1;
-            for(unsigned int i=0; i<officialLoginInfo.playersFound.size(); i++){
-                if(officialLoginInfo.playersFound[i] == 0){
-                    foundAllPlayers = 0;
-                    break;
-                }
-            }
-
-            if(foundAllPlayers == 0){ // ignore request for now
-                return;
-            } else{ // all players have logged in -- create initial gamestate and send it to all players
-                printf("ALL PLAYERS HAVE LOGGED IN!  STARTING GAME...\n");
-                // Updating values
-                gameStarted = 1;
-                officialGameState.numPlayers = players.size();
-                officialGameState.players = players;
-
-                // ZZZ:  MAY NEED TO FIX THIS IN LATER VERSIONS BY CALLING A ROUNDS LOOP INSTEAD...
-                #ifndef TESTING
-                    PILE deck = refDeck;
-                    for(int i=0; i<7; i++){
-                        deck = oneShuffle(deck);
-                    }
-                    officialGameState.allCards = deal(deck, officialGameState.numPlayers);
-                    MessageAllClients(); // send all clients copy of the initial, global officialGameState
-
-                #endif
-
-                
-
-            }
-        } 
-        // user sent an actual value--update the official structure, record the player
-            // ZZZ:  Sorry, implementation TBD!
-    
+    if(gameState.numPlayers == LOBBY_ROSTER_REQUEST){
+        // CODEX FIX: respond to read-only lobby roster requests from the host client.
+        SyncLobbyRosterIntoGameState();
+        // CODEX FIX: include launch status in roster replies for consistent lobby sync.
+        officialGameState.callAmount = gameStarted ? LOBBY_GAME_STARTED : LOBBY_GAME_WAITING;
+        WriteGameStateResponse(DataSocketFD, "Writing roster data to socket failed");
         return;
+    }
+
+    if(gameState.numPlayers == LOBBY_START_REQUEST){
+        // CODEX FIX: host launch is now a server-owned state change, not just a local screen switch.
+        SyncLobbyRosterIntoGameState();
+        if(LobbyHasAllPlayers()){
+            printf("ALL PLAYERS HAVE LOGGED IN!  STARTING GAME...\n");
+            // CODEX FIX: record the launch so joined clients polling the server can move to Poker.
+            gameStarted = 1;
+            // CODEX FIX: send an explicit launched flag back to the host.
+            officialGameState.callAmount = LOBBY_GAME_STARTED;
+        } else{
+            // CODEX FIX: tell the host the lobby is still waiting instead of leaving the socket unanswered.
+            officialGameState.callAmount = LOBBY_GAME_WAITING;
+        }
+        WriteGameStateResponse(DataSocketFD, "Writing launch response to socket failed");
+        return;
+    }
+
+    if(gameState.numPlayers == LOBBY_STATUS_REQUEST){
+        // CODEX FIX: joined clients poll this branch while waiting for the host launch.
+        SyncLobbyRosterIntoGameState();
+        // CODEX FIX: encode waiting/launched status in the response without mutating real game flow.
+        officialGameState.callAmount = gameStarted ? LOBBY_GAME_STARTED : LOBBY_GAME_WAITING;
+        WriteGameStateResponse(DataSocketFD, "Writing launch status to socket failed");
+        return;
+    }
+
+    if(gameState.numPlayers == 0){ // dummy value--first time the user is connecting to the server regarding this
+        // CODEX FIX: keep the legacy dummy-game request from blocking if the lobby is not ready.
+        SyncLobbyRosterIntoGameState();
+        if(LobbyHasAllPlayers()){
+            printf("ALL PLAYERS HAVE LOGGED IN!  STARTING GAME...\n");
+            // CODEX FIX: legacy start requests should set the same launch flag as the host button.
+            gameStarted = 1;
+            officialGameState.callAmount = LOBBY_GAME_STARTED;
+        } else{
+            // CODEX FIX: legacy start requests now receive a waiting response instead of no response.
+            officialGameState.callAmount = LOBBY_GAME_WAITING;
+        }
+        WriteGameStateResponse(DataSocketFD, "Writing legacy game-start response to socket failed");
+        return;
+    }
+
+    // user sent an actual value--update the official structure, record the player
+        // ZZZ:  Sorry, implementation TBD!
+
+    return;
 }
 
 
@@ -528,7 +643,7 @@ int main(			/* the main function */
 
     int ServSocketFD;	/* socket file descriptor for service */
     int PortNo;		/* port number */
-    GtkWidget *Window;	/* the server window */
+    //GtkWidget *Window;	/* the server window */
 
     Program = argv[0];	/* publish program name (for diagnostics) */
     #ifdef DEBUG

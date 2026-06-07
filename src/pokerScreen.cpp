@@ -4,7 +4,7 @@
 #include <iomanip>
 #include <vector>
 #include <iostream>
-#include <filesystem>
+// CODEX FIX: removed <filesystem>; using GLib's g_file_test() below for server compatibility.
 #include "pokerScreen.hpp"
 
 using namespace std;
@@ -89,7 +89,7 @@ static const char* GAME_CSS = R"CSS(
 
 )CSS";
 
-static string resolveAsset(const string& relativePath) {
+static string resolveFile(const string& relativePath) {
 
     vector<string> searchPaths = {
         relativePath,
@@ -99,43 +99,38 @@ static string resolveAsset(const string& relativePath) {
     };
 
     for (const auto& path : searchPaths) {
-        if (filesystem::exists(path)) {
+        // CODEX FIX: replaced filesystem::exists(path) so this builds without C++17 filesystem support.
+        if (g_file_test(path.c_str(), G_FILE_TEST_EXISTS)) {
             return path;
         }
     }
 
-    cerr << "Asset not found: " << relativePath << endl;
+    cerr << "File not found: " << relativePath << endl;
     return relativePath;
 }
 
-static string getCardAssetPath(const Card& card) {
+static string getCardFilePath(const Card& card) {
 
-    if (card.faceDown) {
-        return resolveAsset("assets/Back.png");
+    if (card.val < 0 || card.suit < 0 || card.val > 12 || card.suit > 3) {
+        return resolveFile("assets/Back.png");
     }
 
-    string suitName = card.suit;
 
-    if (suitName == "♥") suitName = "Heart";
-    else if (suitName == "♦") suitName = "Diamond";
-    else if (suitName == "♣") suitName = "Clover";
-    else if (suitName == "♠") suitName = "Spades";
-
-    string rankNum = card.rank;
-
-    if (suitName == "Heart" ||
-        suitName == "Diamond" ||
-        suitName == "Clover" ||
-        suitName == "Spades") {
-
-        string path =
-            "assets/" + suitName + "/" +
-            suitName + " " + rankNum + ".png";
-
-        return resolveAsset(path);
+    string suitName;
+    if (card.suit == 0)      suitName = "Heart";
+    else if (card.suit == 1) suitName = "Clover";   
+    else if (card.suit == 2) suitName = "Diamond";
+    else if (card.suit == 3) suitName = "Spades";
+    else {
+        return resolveFile("assets/Anteater.png");
     }
 
-    return resolveAsset("assets/Anteater.png");
+    const char* ranks[] = { "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace" };
+    string rankNum = ranks[card.val];
+
+    string path = "assets/" + suitName + "/" + suitName + " " + rankNum + ".png";
+
+    return resolveFile(path);
 }
 
 
@@ -180,11 +175,13 @@ void pokerScreen::buildUI() {
 
     foldButton = gtk_button_new_with_label("FOLD");
     gtk_widget_set_name(foldButton, "gs-fold-btn");
+    //gtk_widget_set_halign(foldButton, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(actionBar), foldButton, TRUE, TRUE, 0);
     g_signal_connect(foldButton, "clicked", G_CALLBACK(onFoldClicked), this);
 
     checkButton = gtk_button_new_with_label("CHECK");
     gtk_widget_set_name(checkButton, "gs-check-btn");
+    //gtk_widget_set_halign(checkButton, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(actionBar), checkButton, TRUE, TRUE, 0);
     g_signal_connect(checkButton, "clicked", G_CALLBACK(onCheckClicked), this);
 
@@ -198,17 +195,20 @@ void pokerScreen::buildUI() {
     GtkWidget* minusBtn = gtk_button_new_with_label("−");
     gtk_widget_set_name(minusBtn, "gs-bet-btn");
     gtk_widget_set_size_request(minusBtn, 30, -1);
+    //gtk_widget_set_halign(minusBtn, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(betBox), minusBtn, FALSE, FALSE, 0);
 
     betSpinButton = gtk_spin_button_new_with_range(10, 100000, 50);
     gtk_widget_set_name(betSpinButton, "gs-spin");
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(betSpinButton), 50);
     gtk_widget_set_size_request(betSpinButton, 80, -1);
+    //gtk_widget_set_halign(betSpinButton, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(betBox), betSpinButton, FALSE, FALSE, 0);
 
     GtkWidget* plusBtn = gtk_button_new_with_label("+");
     gtk_widget_set_name(plusBtn, "gs-bet-btn");
     gtk_widget_set_size_request(plusBtn, 30, -1);
+    //gtk_widget_set_halign(plusBtn, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(betBox), plusBtn, FALSE, FALSE, 0);
 
     g_signal_connect_swapped(minusBtn, "clicked",
@@ -221,13 +221,14 @@ void pokerScreen::buildUI() {
     betButton = gtk_button_new_with_label("BET");
     gtk_widget_set_name(betButton, "gs-bet-btn");
     gtk_widget_set_size_request(betButton, 60, -1);
+    //gtk_widget_set_halign(betButton, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(betBox), betButton, FALSE, FALSE, 0);
     g_signal_connect(betButton, "clicked", G_CALLBACK(onBetClicked), this);
 
     allInButton = gtk_button_new_with_label("ALL IN");
     gtk_widget_set_name(allInButton, "gs-allin-btn");
-    gtk_widget_set_size_request(allInButton, 60, -1);
-    gtk_box_pack_start(GTK_BOX(actionBar), allInButton, FALSE, FALSE, 0);
+    //gtk_widget_set_halign(allInButton, GTK_ALIGN_CENTER);
+    gtk_box_pack_start(GTK_BOX(actionBar), allInButton, TRUE, TRUE, 0);
     g_signal_connect(allInButton, "clicked", G_CALLBACK(onAllInClicked), this);
 
 }
@@ -242,18 +243,43 @@ void pokerScreen::applyStyles() {
     g_object_unref(provider);
 }
 
-void pokerScreen::updateGameState(const vector<playerInfo>& players,
-                                  const vector<Card>&       communityCards,
-                                  const vector<Card>&       holeCards,
-                                  int                       pot,
-                                  int                       currentBet,
-                                  int                       currentPlayerStack) {
-    cachedPlayers   = players;
+void pokerScreen::updateGameState(const vector<PLAYER>& players,
+                                  const vector<Card>& communityCards,
+                                  const vector<Card>& holeCards,
+                                  int pot,
+                                  int currentBet,
+                                  int currentPlayerStack,
+                                  int playerTurn,
+                                  int dealerTurn) {
+    cachedPlayers.clear();
+    for (const auto& enginePlayer : players) {
+        playerInfo uiSeat;
+        uiSeat.name = enginePlayer.name;
+        uiSeat.stack = enginePlayer.score;
+        uiSeat.avatarIndex = enginePlayer.playerNum;
+        
+        // Determine player status text based on engine flags
+        if (enginePlayer.isInHand == 0) {
+            uiSeat.status = "Folded";
+        } else if (enginePlayer.isEliminated == 1) {
+            uiSeat.status = "Eliminated";
+        } else {
+            uiSeat.status = "Active";
+        }
+        
+        // Match active turn markers
+        // Assuming your controller handles turn indicators, or defaults to false
+        uiSeat.yourTurn = (enginePlayer.playerNum == playerTurn); 
+        uiSeat.isDealer = (enginePlayer.playerNum == dealerTurn); 
+
+        cachedPlayers.push_back(uiSeat);
+    }
+
     cachedCommunity = communityCards;
-    cachedHole      = holeCards;
-    cachedPot       = pot;
-    cachedBet       = currentBet > 0 ? currentBet : 50;
-    localStack      = currentPlayerStack;
+    cachedHole = holeCards;
+    cachedPot = pot;
+    cachedBet = currentBet > 0 ? currentBet : 50;
+    localStack = currentPlayerStack;
 
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(betSpinButton), cachedBet);
     gtk_spin_button_set_range(GTK_SPIN_BUTTON(betSpinButton), 10, localStack);
@@ -262,10 +288,12 @@ void pokerScreen::updateGameState(const vector<playerInfo>& players,
 }
 
 void pokerScreen::setActions(bool enable) {
-    gtk_widget_set_sensitive(foldButton,    enable);
-    gtk_widget_set_sensitive(checkButton,   enable);
-    gtk_widget_set_sensitive(betButton,     enable);
+    gtk_widget_set_sensitive(foldButton, enable);
+    gtk_widget_set_sensitive(checkButton, enable);
+    gtk_widget_set_sensitive(betButton, enable);
     gtk_widget_set_sensitive(betSpinButton, enable);
+    // CODEX FIX: disable All In with the rest of the action buttons during lobby-synced table setup.
+    gtk_widget_set_sensitive(allInButton, enable);
 }
 
 gboolean pokerScreen::onDraw(GtkWidget* widget, cairo_t* cr, gpointer data) {
@@ -336,7 +364,7 @@ void pokerScreen::drawTable(cairo_t* cr, int w, int h) {
     for (int i = 0; i < numCommunity; ++i) {
         drawCard(cr, startX + i * cardSpacing, cardY, cardW, cardH, cachedCommunity[i]);
     }
-    Card back; back.faceDown = true;
+    Card back;
     for (int i = numCommunity; i < 5; ++i) {
         drawCard(cr, startX + i * cardSpacing, cardY, cardW, cardH, back);
     }
@@ -384,7 +412,7 @@ void pokerScreen::drawTable(cairo_t* cr, int w, int h) {
 
 void pokerScreen::drawCard(cairo_t* cr, double x, double y,
                            double cw, double ch, const Card& card) {
-    string filePath = getCardAssetPath(card);
+    string filePath = getCardFilePath(card);
 
     GError* error = nullptr;
     GdkPixbuf* pixbuf = gdk_pixbuf_new_from_file(filePath.c_str(), &error);
@@ -406,7 +434,14 @@ void pokerScreen::drawCard(cairo_t* cr, double x, double y,
         cairo_set_font_size(cr, 11);
         
         cairo_text_extents_t te;
-        string displayText = card.faceDown ? "BACK" : (card.rank + card.suit);
+        string displayText;
+        if (card.val < 0 || card.suit < 0) {
+            displayText = "BACK";
+        } else {
+            const char* suitsShort[] = { "H", "C", "D", "S" };
+            const char* valuesShort[] = { "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A" };
+            displayText = string(valuesShort[card.val]) + suitsShort[card.suit];
+        }
         cairo_text_extents(cr, displayText.c_str(), &te);
         
         cairo_move_to(cr, x + (cw - te.width) / 2.0, y + (ch + te.height) / 2.0);
@@ -446,7 +481,8 @@ void pokerScreen::drawCard(cairo_t* cr, double x, double y,
         int cropH = maxY - minY + 1;
         croppedPixbuf = gdk_pixbuf_new_subpixbuf(pixbuf, minX, minY, cropW, cropH);
     } else {
-        croppedPixbuf = g_object_ref(pixbuf); // rely on the full image
+        // CODEX FIX: GTK returns gpointer here; cast it back to GdkPixbuf* for C++.
+        croppedPixbuf = GDK_PIXBUF(g_object_ref(pixbuf)); // rely on the full image
     }
 
     GdkPixbuf* scaledPixbuf = gdk_pixbuf_scale_simple(
@@ -469,7 +505,7 @@ void pokerScreen::drawPlayer(cairo_t* cr, int w, int h,
     double rx = w * 0.44, ry = h * 0.38;
 
     double angleOffset = M_PI / 2.0;
-    double angle       = angleOffset + (2.0 * M_PI * seatIndex / numSeats);
+    double angle = angleOffset + (2.0 * M_PI * seatIndex / numSeats);
     
     double px = cx + rx * 1.12 * cos(angle);
     double py = cy + ry * 1.16 * sin(angle);
@@ -479,8 +515,12 @@ void pokerScreen::drawPlayer(cairo_t* cr, int w, int h,
 
     bool isTurn = p.yourTurn;
 
-    if (isTurn) setRGBA(cr, 0.85, 0.73, 0.25, 0.95); 
-    else        setRGBA(cr, 0.12, 0.25, 0.25, 0.90);
+    if (isTurn) {
+        setRGBA(cr, 0.85, 0.73, 0.25, 0.95); 
+    }
+    else {
+        setRGBA(cr, 0.12, 0.25, 0.25, 0.90);
+    }
 
     cairo_rectangle(cr, bx, by, boxW, boxH);
     cairo_fill(cr);
@@ -620,25 +660,25 @@ int main(int argc, char* argv[]) {
     }
 
     vector<Card> communityBoard;
-    Card board1, board2, board3;
-    board1.rank = "10"; board1.suit = "♥"; board1.faceDown = false;
-    board2.rank = "J";  board2.suit = "♥"; board2.faceDown = false;
-    board3.rank = "Q";  board3.suit = "♥"; board3.faceDown = false;
+    // enum val { Two... Ten=8, Jack=9, Queen=10, King=11, Ace=12 }
+    // enum suit { Hearts=0, Clubs=1, Diamonds=2, Spades=3 }
+    Card board1(8, 0);  // 10 of Hearts
+    Card board2(9, 0);  // Jack of Hearts
+    Card board3(10, 0); // Queen of Hearts
     communityBoard.push_back(board1);
     communityBoard.push_back(board2);
     communityBoard.push_back(board3);
 
     vector<Card> privateHoleCards;
-    Card hole1, hole2;
-    hole1.rank = "A";  hole1.suit = "♥"; hole1.faceDown = false;
-    hole2.rank = "K";  hole2.suit = "♥"; hole2.faceDown = false;
+    Card hole1(12, 0);  // Ace of Hearts
+    Card hole2(11, 0);  // King of Hearts
     privateHoleCards.push_back(hole1);
     privateHoleCards.push_back(hole2);
 
     gameUI.onFold  = []() { cout << "[Sandbox Action Log]: FOLD was pressed!" << endl; };
     gameUI.onCheck = []() { cout << "[Sandbox Action Log]: CHECK/CALL was pressed!" << endl; };
     gameUI.onBet   = [](int val) { cout << "[Sandbox Action Log]: BET registration parsed for: $" << val << endl; };
-    gameUI.onAllIn = []() { cout << "[Sandbox Action Log]: ALL IN was pressed!" << endl};
+    gameUI.onAllIn = []() { cout << "[Sandbox Action Log]: ALL IN was pressed!" << endl; };
 
     gameUI.updateGameState(finalPlayersList, communityBoard, privateHoleCards, mockData.potTotal, mockData.minimumToCall, 2500);
     gameUI.setActions(true);

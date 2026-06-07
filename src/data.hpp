@@ -50,7 +50,6 @@ typedef std::string String;
         int isInHand{1}; // 1 if player is still playing in the hand (i.e. hasn't folded), and 0 if not; reset at the beginning of each hand
         int isEliminated{0}; // should be removed from the list if this is true (1); indicates whether a player has 0 points left at the end of a round
         int playerSocket{-1}; // holds the player's (a client) socket number
-        int total_bet{0};
 
         void PrintPlayer(){
             printf("Player:  \n");
