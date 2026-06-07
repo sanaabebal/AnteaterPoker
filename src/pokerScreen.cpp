@@ -242,14 +242,14 @@ void pokerScreen::applyStyles() {
     g_object_unref(provider);
 }
 
-void pokerScreen::GameState(const vector<PLAYER>& players,
+void pokerScreen::updateGameState(const vector<PLAYER>& players,
                                   const vector<Card>& communityCards,
                                   const vector<Card>& holeCards,
                                   int pot,
                                   int currentBet,
-                                  int currentPlayerStack
+                                  int currentPlayerStack,
                                   int playerTurn,
-                                  int dealerPlayer) {
+                                  int dealerTurn) {
     cachedPlayers.clear();
     for (const auto& enginePlayer : players) {
         playerInfo uiSeat;
