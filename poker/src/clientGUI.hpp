@@ -1,39 +1,78 @@
-/* clientGUI.hpp */
+#ifndef CLIENT_GUI_HPP
+#define CLIENT_GUI_HPP
 
-#ifndef CLIENTGUI
-#define CLIENTGUI
+#pragma once
+#include <gtk/gtk.h>
+#include <vector>
+#include <string>
+#include <memory>
 
 #include "cards.hpp"
 #include "data.hpp"
+#include "loginScreen.hpp"
+#include "hostScreen.hpp"
+#include "joinScreen.hpp"
+#include "pokerScreen.hpp"
+#include "gameOverScreen.hpp"
 
-// NEW/UPDATED FUNCTIONS
-    /* textMenu():  Based on information from the server regarding login stuff, shows a text menu; player inputs then impact the login info; new LOGININFO is returned */
-    LOGININFO textMenu(LOGININFO serverLoginInfo);
+using namespace std;
 
-    /* textMenu():  Based on information from the server regarding login stuff, shows a text menu; player inputs then impact the login info; new LOGININFO is returned */
-    LOGININFO guiMenu(LOGININFO serverLoginInfo);
+enum class ScreenID {
+    Login,
+    Host,
+    Join,
+    Poker,
+    GameOver
+};
 
-    /* printLogMessage():  Used to notify the player of what is going on the game by keeping track of things in a log; will notify players of bets/folds, who wins the hand, start/end of a round, etc. */
-    void printLogMessage(const char *msg);
-// end new/updated functions
+class ClientGUI {
+public:
 
-/* displayWaitingScreen():  Displays the waiting screen while waiting for other players to join */
-void displayWaitingScreen(int numPlayers);
+    ClientGUI(int argc, char** argv);
+    ~ClientGUI();
 
-/* displayCards():  Displays the player's hole cards and the the community cards*/
-void displayCards(PILES piles);
+    void run();
 
-/* displayPot():  Displays the pot */
-void displayPot(int pot);
+    void show(ScreenID id);
 
-/* displayScores():  Displays player scores */
-void displayScores(PLAYERS players);
+    void updateHostPlayerList(const vector<PLAYER>& players, int maxPlayers);
+    void updateJoinPlayerList(const vector<PLAYER>& players, int maxPlayers);
+    void setAvailableSlots(const vector<int>& slots);
+    void updateGameState(const vector<PLAYER>& players, const vector<Card>& community,
+                         const vector<Card>& hole, int pot, int currentBet, int localStack);
 
-/* askAction():  Gets a bet or special bet (call or fold) from player, if applicable, based on the current state of the game and which player they are */
-int askAction(GAMESTATE gameState, int playerNum);
+    void setGameActions(bool enabled);
+    void setResults(const vector<PLAYER>& results, const GAMESTATE& summary);
 
-/* displayAnalysis():  ???*/
-int displayAnalysis(PILES piles, int playerNum);
 
+    function<void(const string& username, const string& password, int numPlayers)> onHostInvite;
+    function<void()> onHostLaunch;
+    function<void(const string& username,const string& password, int slot)> onJoinConfirm;
+    function<void()> onFold;
+    function<void()> onCheck;
+    function<void(int amount)> onBet;
+    function<void()> onAllIn;
+    function<void()> onPlayAgain;
+    function<void()> onExitToLobby;
+
+private:
+
+    void buildWindow(int argc, char** argv);
+    void wireCallbacks();
+
+    static const char* screenName(ScreenID id);
+
+    static void onWindowDestroy(GtkWidget*, gpointer);
+
+    GtkWidget* window;
+    GtkWidget* stack;   
+
+    unique_ptr<loginScreen> loginScreenObject;
+    unique_ptr<hostScreen> hostScreenObject;
+    unique_ptr<joinScreen> joinScreenObject;
+    unique_ptr<pokerScreen> pokerScreenObject;
+    unique_ptr<gameOverScreen> gameOverScreenObject;
+
+};
 
 #endif

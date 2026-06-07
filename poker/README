@@ -20,6 +20,7 @@ Version 1.0 Notes:
         bin/poker_client serverName 10081 # or the same port numbre in the range 10081 - 10089
 * Multiple players can log on, but they must log on one at a time.  If multiple players have the login screen open (i.e. have the GUI open but have not reached the wait screen yet), the info they will have will be out of date (the program works by sending login data once to the client when they open the program, and then the client sends the updated version back to the server; the server can then send this updated version to the next client who connects, and so on)
 * The wait screen may freeze after three seconds due to how the client program waits for its next instructions from the server.  It should unfreeze once all players log on.  If it does not or the player needs to exit the program, use Control + C in the command line.
+* Likewise, players will not be able to close the window during the game--the only way to end the game is to close the server directly.
 * The user must use -X when logging onto the EECS server for the GTK display to work.
 * To shut down the game, go to the server window and click down "Shutdown Server"
 * Side pots are not created in the event a player goes all in--instead, the player who goes all in does not continue betting in the hand, and they can win the full pot.

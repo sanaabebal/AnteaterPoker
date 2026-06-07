@@ -22,15 +22,20 @@ test:  ./bin/testCards ./bin/testData ./bin/testAlphaServer ./bin/testAlphaClien
 	@echo ""
 	@echo "Testing file names:  bin/testCards bin/testData bin/testAlphaServer bin/testAlphaClient bin/testAlphaClientGUI bin/testClientCommW9 bin/testServerCommW9 bin/testClientGUI"
 	bin/testData
-	bin/testGUIW9
-	bin/testServerCommW9 &
-	bin/testClientCommW9
+	make test-gui
+	make test-comm
 
-test-gui test_gui:  ./bin/testGUIW9
+# bin/testServerCommW9 &
+# bin/testClientCommW9
+
+test-gui test_gui:  bin/display1 bin/display2 bin/display3 bin/display4
 	@echo ""
 	@echo ""
 	@echo "Testing client GUI for game"
-	./bin/testGUIW9
+	bin/display1
+	bin/display2
+	bin/display3
+	bin/display4
 
 # @echo "---------PLEASE RUN bin/testAlphaClientGUI serverName 10080 IF YOU ARE NOT USING THE BONDI SERVER--------"
 # ./bin/testAlphaServer 10080
@@ -149,3 +154,39 @@ testClientCommW9.o:  ./src/testClientCommW9.cpp $(SHARED) src/DataTransfer.hpp
 tar:  
 	tar -zcvf Poker_Beta.tar.gz ./README ./COPYRIGHT ./INSTALL ./bin ./doc/Poker_UserManual.pdf
 	tar -zcvf Poker_Beta_src.tar.gz ./README ./COPYRIGHT ./INSTALL ./assets ./doc ./bin ./src ./Makefile
+
+
+
+
+# New GUI files (testing)
+# clientGUI.o:  ./src/clientGUI.cpp $(SHARED) ./src/clientGUI.hpp
+# $(OBJ) ./src/clientGUI.cpp -o clientGUI.o $(GTK_CFLAGS)
+
+gameOverScreen.o:  ./src/gameOverScreen.cpp $(SHARED) ./src/gameOverScreen.hpp
+	$(OBJ) ./src/gameOverScreen.cpp -o gameOverScreen.o $(GTK_CFLAGS) -DTEST_GAMEOVER_SCREEN
+
+hostScreen.o:  ./src/hostScreen.cpp $(SHARED) ./src/hostScreen.hpp
+	$(OBJ) ./src/hostScreen.cpp -o hostScreen.o $(GTK_CFLAGS) -DTEST_HOST
+
+joinScreen.o:  ./src/joinScreen.cpp $(SHARED) ./src/joinScreen.hpp
+	$(OBJ) ./src/joinScreen.cpp -o joinScreen.o $(GTK_CFLAGS) -DTEST_JOIN
+
+pokerScreen.o:  ./src/pokerScreen.cpp $(SHARED) ./src/pokerScreen.hpp
+	$(OBJ) ./src/pokerScreen.cpp -o pokerScreen.o $(GTK_CFLAGS) -DTEST_POKER
+
+
+# GUI Testing executables
+bin/display1:  hostScreen.o cards.o DataTransfer.o
+	g++ -Wall hostScreen.o -o bin/display1 $(GTK_LIBS)
+
+bin/display2:  joinScreen.o cards.o DataTransfer.o
+	g++ -Wall joinScreen.o -o bin/display2 $(GTK_LIBS)
+
+bin/display3:  pokerScreen.o cards.o DataTransfer.o
+	g++ -Wall pokerScreen.o -o bin/display3 $(GTK_LIBS)
+
+bin/display4:  gameOverScreen.o cards.o DataTransfer.o
+	g++ -Wall gameOverScreen.o -o bin/display4 $(GTK_LIBS)
+
+
+
