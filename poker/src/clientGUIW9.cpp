@@ -1205,10 +1205,60 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
 
 
 
+// NEW!  CSS Display Code from Sanaa
+static const char* APP_CSS = R"CSS(
+    window, .bg {
+        background-color: #2b4c54;
+    }
+    label {
+        color: #f5ecc8;
+        font-family: "Georgia", serif;
+    }
+    button {
+        background-image: none;
+        background-color: #e8d9a0;
+        color: #2c1f0e;
+        font-family: "Georgia", serif;
+        font-size: 13px;
+        border: 2px solid #a08040;
+        padding: 6px 16px;
+    }
+    button label {
+        color: #2c1f0e;
+    }
+    button:hover {
+        background-image: none;
+        background-color: #f0e6b8;
+        border-color: #c0a050;
+    }
+    entry {
+        background-color: #1e3a38;
+        color: #f5ecc8;
+        font-family: "Georgia", serif;
+        border: 1px solid #3a6a68;
+    }
+)CSS";
+
 
 void MainMenu(int *argc, char **argv[], LOGININFO &loginInfo){
     /* initialize the GTK libraries */
     gtk_init(argc, argv);
+
+    // NEW!  CSS code
+    GtkCssProvider *cssProvider = gtk_css_provider_new();
+    gtk_css_provider_load_from_data(cssProvider,
+        "window, box { background-color: #2b4c54; }\n"
+        "label { color: #f5ecc8; font-family: Georgia, serif; }\n"
+        "button { background-image: none; background-color: #e8d9a0; color: #2c1f0e; font-family: Georgia, serif; border: 2px solid #a08040; padding: 6px 16px; }\n"
+        "button label { color: #2c1f0e; }\n"
+        "button:hover { background-image: none; background-color: #f0e6b8; border-color: #c0a050; }\n"
+        "entry { background-color: #1e3a38; color: #f5ecc8; font-family: Georgia, serif; border: 1px solid #3a6a68; }\n",
+        -1, NULL);
+    gtk_style_context_add_provider_for_screen(
+        gdk_screen_get_default(),
+        GTK_STYLE_PROVIDER(cssProvider),
+        GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    g_object_unref(cssProvider);
 
     /* create the main, top level window */
     Window = gtk_window_new(GTK_WINDOW_TOPLEVEL);

@@ -44,6 +44,7 @@ std::vector<int> connectedClientSockets;
 GtkWidget *Window;
 GtkWidget *player[10];
 GtkWidget *scores[10];
+GtkWidget *playerRows[10];
 // Setup for official login information log and log of players; setup for official gamestate
 LOGININFO officialLoginInfo;
 GAMESTATE officialGameState;
@@ -85,6 +86,21 @@ GtkWidget *CreateWindow(	/* create the server window */
     
     /* initialize the GTK libraries */
     gtk_init(argc, argv);
+
+
+    // NEW!
+        GtkCssProvider *Provider = gtk_css_provider_new();
+    gtk_css_provider_load_from_data(Provider,
+        "window, box { background-color: #2b4c54; }\n"
+        "label { color: #f5ecc8; font-family: Georgia, serif; }\n"
+        "button { background-image: none; background-color: #e8d9a0; color: #2c1f0e; font-family: Georgia, serif; border: 2px solid #a08040; padding: 8px 18px; }\n"
+        "button label { color: #2c1f0e; }\n"
+        "button:hover { background-image: none; background-color: #f0e6b8; }\n",
+        -1, NULL);
+    gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
+        GTK_STYLE_PROVIDER(Provider),
+        GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    g_object_unref(Provider);
 
 
     /* create the main, top level window */
