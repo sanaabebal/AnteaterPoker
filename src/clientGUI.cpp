@@ -237,14 +237,28 @@ void ClientGUI::wireCallbacks() {
         show(ScreenID::Host);
     };
     loginScreenObject->onPlayerGame = [this]() {
+        setAvailableSlots({1, 2}); 
         show(ScreenID::Join);
     };
 
-    hostScreenObject->onInvite = [this](const string& username, const string& password, int numPlayers) {
-        if (onHostInvite) {
-            onHostInvite(username, password, numPlayers);
+    hostScreenObject->onInvite = [this](const string& username,
+                                    const string& password,
+                                    int numPlayers) {
+    playerLoginInfo = SendServerLogin(playerLoginInfo);
+
+    vector<PLAYER> shownPlayers;
+    for (int i = 0; i < playerLoginInfo.numPlayers; i++) {
+        if (i < (int)playerLoginInfo.playersFound.size() &&
+            playerLoginInfo.playersFound[i] == 1) {
+            PLAYER p;
+            p.playerNum = i;
+            sprintf(p.name, "Player %d", i + 1);
+            shownPlayers.push_back(p);
         }
-    };
+    }
+
+    updateHostPlayerList(shownPlayers, playerLoginInfo.numPlayers);
+};
     hostScreenObject->onLaunch = [this]() {
         if (onHostLaunch) {
             onHostLaunch();
@@ -257,6 +271,7 @@ void ClientGUI::wireCallbacks() {
 
     joinScreenObject->onConfirmedJoin = [this](const string& username, const string& password, int slot) {
         // ZZZ: NOT SURE YET
+        playerLoginInfo = SendServerLogin(playerLoginInfo);
         if (onJoinConfirm){
             onJoinConfirm(username, password, slot);
         }

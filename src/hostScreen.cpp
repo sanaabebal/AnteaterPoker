@@ -315,7 +315,7 @@ void hostScreen::playerList(const vector<PLAYER>& players, int mp) {
 
     gtk_widget_show_all(listBox);
 
-    gtk_widget_set_sensitive(launchButton, (int)players.size() == maxPlayers);
+    gtk_widget_set_sensitive(launchButton, TRUE);
 
 }
 
