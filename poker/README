@@ -30,7 +30,7 @@ Game Flow:
 * Side pots are not created in the event a player goes all in--instead, the player who goes all in does not continue betting in the hand, and they can win the full pot.
 * If a player does not have enough money to cover their blind at the beginning of a round, they are eliminated.
 * Checking may not always work as intended.
-* To shut down the game, go to the server window and click down "Shutdown Server," and use Control + C on the server terminal window.  It isn't the cleanest method of shutting down the game, but it will work.
+* To shut down the game, go to the server window and click down "Shutdown Server," and use Control + C on the server terminal window.  It isn't the cleanest method of shutting down the game, but it should work.
 * Cases involving up to four players have been tested.  Beyond that, there is a possible risk that the program will crash due to how reading/writing server/client communications work.
 
 Other Notes:
