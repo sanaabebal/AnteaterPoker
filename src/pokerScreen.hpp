@@ -31,7 +31,9 @@ class pokerScreen {
                               const vector<Card>& holeCards,
                               int pot,
                               int currentBet,
-                              int currentPlayerStack
+                              int currentPlayerStack,
+                              int playerTurn,
+                              int dealerTurn
                             );
         
         void setActions(bool enable);

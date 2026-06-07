@@ -255,7 +255,6 @@ void ClientGUI::wireCallbacks() {
         show(ScreenID::Login);
     };
 
-    /*
     joinScreenObject->onConfirmedJoin = [this](const string& username, const string& password, int slot) {
         // ZZZ: NOT SURE YET
         if (onJoinConfirm){
@@ -268,35 +267,35 @@ void ClientGUI::wireCallbacks() {
         show(ScreenID::Login);
     };
 
-    pokerScreenObject->onFold = [this]() {
-        sendPlayerActionToServer(SocketFD, ACTION_FOLD, 0);
-        if (onFold) {
-            onFold();
-        }
-    };
+    // pokerScreenObject->onFold = [this]() {
+    //     sendPlayerActionToServer(SocketFD, ACTION_FOLD, 0);
+    //     if (onFold) {
+    //         onFold();
+    //     }
+    // };
 
-    // ZZZ: CHECK THIS
-    pokerScreenObject->onCheck = [this]() {
-        sendPlayerActionToServer(SocketFD, ACTION_CHECK, 0);
-        if (onCheck) {
-            onCheck();
-        }
-    };
+    // // ZZZ: CHECK THIS
+    // pokerScreenObject->onCheck = [this]() {
+    //     sendPlayerActionToServer(SocketFD, ACTION_CHECK, 0);
+    //     if (onCheck) {
+    //         onCheck();
+    //     }
+    // };
 
-    pokerScreenObject->onBet = [this](int amount) {
-        sendPlayerActionToServer(SocketFD, ACTION_BET, amount);
-        if (onBet){
-            onBet(amount);
-        }
-    };
+    // pokerScreenObject->onBet = [this](int amount) {
+    //     sendPlayerActionToServer(SocketFD, ACTION_BET, amount);
+    //     if (onBet){
+    //         onBet(amount);
+    //     }
+    // };
 
-    pokerScreenObject->onAllIn = [this]{
-        sendPlayerActionToServer(SocketFD, ACTION_ALLIN, 0);
+    // pokerScreenObject->onAllIn = [this]{
+    //     sendPlayerActionToServer(SocketFD, ACTION_ALLIN, 0);
 
-        if (onAllIn){
-            onAllIn();
-        }
-    };
+    //     if (onAllIn){
+    //         onAllIn();
+    //     }
+    // };
 
     gameOverScreenObject->onPlayAgain = [this]() {
         if (onPlayAgain) {
@@ -311,7 +310,7 @@ void ClientGUI::wireCallbacks() {
         }
         show(ScreenID::Login);
     };
-    */
+    
 
     pokerScreenObject -> onFold = [this]() {
         int turn = officialGameState.playerTurn;
@@ -397,8 +396,10 @@ void ClientGUI::setAvailableSlots(const vector<int>& slots) {
 }
 
 void ClientGUI::updateGameState(const vector<PLAYER>& players, const vector<Card>& community,
-                                 const vector<Card>& hole, int pot, int currentBet, int localStack) {
-    pokerScreenObject->updateGameState(players, community, hole, pot, currentBet, localStack);
+                                 const vector<Card>& hole, int pot, int currentBet, int localStack,
+                                 int playerTurn, int dealerTurn) {
+    pokerScreenObject->updateGameState(players, community, hole, pot, currentBet, localStack, 
+                                        playerTurn, dealerTurn);
 }
 
 void ClientGUI::setGameActions(bool enabled) { 

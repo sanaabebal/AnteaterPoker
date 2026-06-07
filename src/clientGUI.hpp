@@ -39,7 +39,8 @@ public:
     void updateJoinPlayerList(const vector<PLAYER>& players, int maxPlayers);
     void setAvailableSlots(const vector<int>& slots);
     void updateGameState(const vector<PLAYER>& players, const vector<Card>& community,
-                         const vector<Card>& hole, int pot, int currentBet, int localStack);
+                         const vector<Card>& hole, int pot, int currentBet, int localStack,
+                         int playerTurn, int dealerTurn);
 
     void setGameActions(bool enabled);
     void setResults(const vector<PLAYER>& results, const GAMESTATE& summary);
