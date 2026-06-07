@@ -171,6 +171,18 @@ int isRoundContinued(GAMESTATE gameState, std::vector<int> hasActed){
 }
 */
 
+int canActCount(GAMESTATE gameState){
+    int count = 0;
+    for(int i=0; i<gameState.players.size(); i++){
+        if(gameState.players[i].isInHand && gameState.players[i].score > 0){ // haven't folded or gone all in
+            count++;
+        }
+    }
+
+    // Wrapup
+    return count;
+}
+
 
 GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify pot, call amount, player.isInHand, player.bet, player.score, and player.greatest; they do not modify the round number or player turn
     GAMESTATE answer = recvGameState;
@@ -202,6 +214,13 @@ GAMESTATE updateGameState(GAMESTATE recvGameState){ // clients only ever modify 
 
     }
 
+
+    // Special case:  All players have either folded or gone all in--go immediately to showdown
+    if(canActCount(answer) == 0){
+        answer = showdownUpdate(answer);
+        answer = startRound(answer);
+        return answer;
+    }
 
     // Case 1:  Going to the next round
     // Updating player turn (but skipping over players who have folded)

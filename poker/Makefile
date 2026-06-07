@@ -28,10 +28,14 @@ test:  ./bin/testCards ./bin/testData ./bin/testAlphaServer ./bin/testAlphaClien
 # bin/testServerCommW9 &
 # bin/testClientCommW9
 
-test-gui test_gui:  bin/display1 bin/display2 bin/display3 bin/display4
+test-gui test_gui:  bin/testGUIW9 bin/display1 bin/display2 bin/display3 bin/display4
 	@echo ""
 	@echo ""
 	@echo "Testing client GUI for game"
+	bin/testGUIW9
+	@echo ""
+	@echo ""
+	@echo "Desired client GUI for game"
 	bin/display1
 	bin/display2
 	bin/display3
@@ -152,8 +156,8 @@ testClientCommW9.o:  ./src/testClientCommW9.cpp $(SHARED) src/DataTransfer.hpp
 
 # Tar instructions
 tar:  
-	tar -zcvf Poker_Beta.tar.gz ./README ./COPYRIGHT ./INSTALL ./bin ./doc/Poker_UserManual.pdf
-	tar -zcvf Poker_Beta_src.tar.gz ./README ./COPYRIGHT ./INSTALL ./assets ./doc ./bin ./src ./Makefile
+	tar -zcvf Poker_V1.0.tar.gz ./README ./COPYRIGHT ./INSTALL ./bin ./doc/Poker_UserManual.pdf
+	tar -zcvf Poker_V1.0_src.tar.gz ./README ./COPYRIGHT ./INSTALL ./assets ./doc ./bin ./src ./Makefile
 
 
 

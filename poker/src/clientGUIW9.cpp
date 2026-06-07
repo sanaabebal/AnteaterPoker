@@ -963,8 +963,8 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
             gameWindow.foldButton = gtk_button_new_with_label("Fold");
             gameWindow.checkButton = gtk_button_new_with_label("Check");
             gameWindow.InputError = gtk_label_new("");
-            gameWindow.helpMenuButton = gtk_button_new_with_label("Help Menu");
-            gameWindow.ShutdownButton = gtk_button_new_with_label("End game and stop server");
+            // gameWindow.helpMenuButton = gtk_button_new_with_label("Help Menu");
+            // gameWindow.ShutdownButton = gtk_button_new_with_label("End game and stop server");
 
         // Logging
             gameWindow.logEvents = gtk_text_view_new();
@@ -1034,8 +1034,8 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
                 gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.checkButton, FALSE, FALSE, 2);
                 gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.InputError, FALSE, FALSE, 2);
                 // gtk_container_add(GTK_CONTAINER(gameWindow.playerInputBox), gameWindow.InputError); -- Don't want to display this unless there is an actual input error
-                gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.helpMenuButton, FALSE, FALSE, 2);
-                gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.ShutdownButton, FALSE, FALSE, 2);
+                // gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.helpMenuButton, FALSE, FALSE, 2);
+                // gtk_box_pack_start(GTK_BOX(gameWindow.playerInputBox), gameWindow.ShutdownButton, FALSE, FALSE, 2);
             }
 
             
@@ -1045,8 +1045,8 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
             g_signal_connect(gameWindow.betButton, "clicked", G_CALLBACK(betClick), NULL);
             g_signal_connect(gameWindow.foldButton, "clicked", G_CALLBACK(foldClick), NULL);
             g_signal_connect(gameWindow.checkButton, "clicked", G_CALLBACK(checkClick), NULL);
-            g_signal_connect(gameWindow.helpMenuButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
-            g_signal_connect(gameWindow.ShutdownButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
+            // g_signal_connect(gameWindow.helpMenuButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
+            // g_signal_connect(gameWindow.ShutdownButton, "clicked", G_CALLBACK(defaultButtonClick), NULL);
 
 
         // Wrapup
@@ -1063,7 +1063,7 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
                 gtk_widget_hide(gameWindow.betEntry);
                 gtk_widget_hide(gameWindow.foldButton);
                 gtk_widget_hide(gameWindow.checkButton);
-                gtk_widget_hide(gameWindow.ShutdownButton);
+                // gtk_widget_hide(gameWindow.ShutdownButton);
             }
 
         
@@ -1187,14 +1187,14 @@ void UpdateGameScreenWindow(GAMESTATE &gameState, int playerNum, int definitelyN
             gtk_widget_hide(gameWindow.betEntry);
             gtk_widget_hide(gameWindow.foldButton);
             gtk_widget_hide(gameWindow.checkButton);
-            gtk_widget_hide(gameWindow.ShutdownButton);
+            // gtk_widget_hide(gameWindow.ShutdownButton);
         } else{
             gtk_widget_show(gameWindow.allInButton);
             gtk_widget_show(gameWindow.betButton);
             gtk_widget_show(gameWindow.betEntry);
             gtk_widget_show(gameWindow.foldButton);
             gtk_widget_show(gameWindow.checkButton);
-            gtk_widget_show(gameWindow.ShutdownButton);
+            // gtk_widget_show(gameWindow.ShutdownButton);
         }
 
         // Wrapup
