@@ -5,6 +5,8 @@
 
 using namespace std;
 
+extern LOGININFO playerLoginInfo;
+
 static const char* joinCSS = R"CSS(
 #js-root {
     background-color: #2b4c54;
@@ -293,8 +295,6 @@ void joinScreen::onConfirmedJoinClicked(GtkButton*, gpointer inputData) {
         g_free(activeText);
     }
 
-    extern LOGININFO playerLoginInfo;
-
     // Additional logic needed for merging
     strncpy(playerLoginInfo.playerName, user.c_str(), sizeof(playerLoginInfo.playerName) -1);
     strncpy(playerLoginInfo.password, pass.c_str(), sizeof(playerLoginInfo.password)-1);
@@ -302,8 +302,11 @@ void joinScreen::onConfirmedJoinClicked(GtkButton*, gpointer inputData) {
     playerLoginInfo.playerType = Human;
 
     if (selectedSlot >= 0){
-        if (selectedSlot >= 0 && (size_t)selectedSlot < playerLoginInfo.playersFound.size()) {
-            playerLoginInfo.playersFound[selectedSlot] = 1;
+        if (playerLoginInfo.numPlayers <= 0) {
+            playerLoginInfo.numPlayers = 3; // temp for testing
+        }
+        if (playerLoginInfo.playersFound.size() < (size_t)playerLoginInfo.numPlayers) {
+            playerLoginInfo.playersFound.resize(playerLoginInfo.numPlayers, 0);
         }
         playerLoginInfo.playersFound[selectedSlot] = 1;
     }

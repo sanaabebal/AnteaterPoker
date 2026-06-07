@@ -73,11 +73,12 @@ void activePlayers(int totalSeats) {
     // checking what seats should be visible or not
     for (int i = 0; i < 10; i++){
         if (i < totalSeats){
-            gtk_widget_set_visible(playerRows[i], TRUE);
+            gtk_widget_set_no_show_all(playerRows[i], FALSE);
+            gtk_widget_show_all(playerRows[i]);
         }
         // anything after number of seats won't be visible
         else {
-            gtk_widget_set_visible(playerRows[i], FALSE);
+            gtk_widget_hide(playerRows[i]);
         }
     }
 
@@ -332,7 +333,8 @@ void ProcessLoginRequest(		/* process a LOGININFO request by a client --user wil
             if(loginInfo.isHost && !foundHost){ // player is host--update the login structure, PLAYERS list accordingly
                 players.resize(loginInfo.numPlayers); // client does NOT do this
 
-                officialLoginInfo.numPlayers = 0;
+                officialLoginInfo.numPlayers = loginInfo.numPlayers;
+                officialLoginInfo.playersFound.assign(loginInfo.numPlayers, 0);
                 // officialLoginInfo.playersFound.resize(loginInfo.numPlayers); -- assume the client does this (and inserts themselves correctly in the list)
                 
                 strcpy(officialLoginInfo.password, loginInfo.password);
@@ -346,8 +348,14 @@ void ProcessLoginRequest(		/* process a LOGININFO request by a client --user wil
                 foundHost = 1;
             }
             // Updating shared aspects btw host and non-host
-            officialLoginInfo.playersFound = loginInfo.playersFound;
-            officialLoginInfo.numPlayers = loginInfo.numPlayers;
+            if ((int)officialLoginInfo.playersFound.size() < officialLoginInfo.numPlayers) {
+                officialLoginInfo.playersFound.resize(officialLoginInfo.numPlayers, 0);
+            }
+            if (loginInfo.playerNum >= 0 && loginInfo.playerNum < officialLoginInfo.numPlayers) {
+                officialLoginInfo.playersFound[loginInfo.playerNum] = 1;
+            }
+            // officialLoginInfo.playersFound = loginInfo.playersFound;
+            // officialLoginInfo.numPlayers = loginInfo.numPlayers;
 
 
             // Record the player
