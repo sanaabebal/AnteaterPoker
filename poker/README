@@ -32,6 +32,7 @@ Game Flow:
 * Checking may not always work as intended.
 * To shut down the game, go to the server window and click down "Shutdown Server," and use Control + C on the server terminal window.  It isn't the cleanest method of shutting down the game, but it should work.
 * Cases involving up to four players have been tested.  Beyond that, there is a possible risk that the program will crash due to how reading/writing server/client communications work.
+* Server display updates properly for players that are still in the game.
 
 Other Notes:
 * Unfortunately, we were unable to put the more advanced GUI systems in our program.  However, these can be seen in "make test-gui".
